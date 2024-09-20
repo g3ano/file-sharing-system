@@ -5,6 +5,7 @@ namespace App\Http\Controllers\v1;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\v1\UserResource;
 use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 
 class UserController extends Controller
 {
@@ -31,6 +32,10 @@ class UserController extends Controller
 
     public function getUserBySlug(string $slug)
     {
+        if ($slug === '@me') {
+            return $this->getAuthUser();
+        }
+
         $user = User::query()
             ->where('slug', $slug)
             ->first();
@@ -40,5 +45,12 @@ class UserController extends Controller
         }
 
         return new UserResource($user);
+    }
+
+    public function getIsUserAuth()
+    {
+        return $this->succeed([
+            'authenticated' => Auth::guard('web')->check(),
+        ]);
     }
 }

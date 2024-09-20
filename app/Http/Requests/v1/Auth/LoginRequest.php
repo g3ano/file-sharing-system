@@ -7,7 +7,6 @@ use App\Http\Requests\BaseRequest;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Validation\ValidationException;
 
 class LoginRequest extends BaseRequest
 {
@@ -29,6 +28,7 @@ class LoginRequest extends BaseRequest
         return [
             'email' => ['bail', 'required', 'string', 'email'],
             'password' => ['bail', 'required', 'string'],
+            'remember' => ['bail', 'required', 'boolean'],
         ];
     }
 
@@ -44,7 +44,7 @@ class LoginRequest extends BaseRequest
         if (!Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
-            throw ValidationException::withMessages([
+            throw $this->failed([
                 'email' => __('auth.failed'),
             ]);
         }
@@ -67,7 +67,7 @@ class LoginRequest extends BaseRequest
 
         $seconds = RateLimiter::availableIn($this->throttleKey());
 
-        throw ValidationException::withMessages([
+        throw $this->failed([
             'email' => trans('auth.throttle', [
                 'seconds' => $seconds,
                 'minutes' => ceil($seconds / 60),

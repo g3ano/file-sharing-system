@@ -11,6 +11,7 @@ Route::prefix('users')
                 Route::get('/@me', 'getAuthUser');
             });
 
+        Route::get('/check', 'getIsUserAuth');
         Route::get('/id/{id}', 'getUserById');
         Route::get('/slug/{slug}', 'getUserBySlug');
     });
