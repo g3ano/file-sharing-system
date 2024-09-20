@@ -10,7 +10,9 @@ trait HasResponse
     public function succeed(array $data, int $status = 200, $wrap = true, $headers = [])
     {
         return response()->json(
-            $wrap ? ['data' => $data] : $data,
+            $wrap
+                ? ['data' => $data]
+                : $data,
             $status,
             $headers
         );
@@ -20,6 +22,14 @@ trait HasResponse
     {
         return $this->succeed([
             'status' => 'success',
+            ...$data,
+        ], $status, true, $headers);
+    }
+
+    public function succeedWithMessage(string $message, array $data = [], int $status = 200, array $headers = [])
+    {
+        return $this->succeed([
+            'message' => $message,
             ...$data,
         ], $status, true, $headers);
     }
