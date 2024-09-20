@@ -2,5 +2,8 @@
 
 return [
     'not_found' => 'The requested user isn\'t found',
-    'authenticated' => 'Authenticated users can\'t perform this action',
+    'authenticated' => [
+        'found' => 'Authenticated users can\'t perform this action',
+        'logout' => 'You\'re now logged out',
+    ],
 ];

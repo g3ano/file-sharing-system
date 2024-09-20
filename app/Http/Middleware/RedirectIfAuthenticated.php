@@ -25,7 +25,7 @@ class RedirectIfAuthenticated extends RedirectIfAuthenticatedBase
         foreach ($guards as $guard) {
             if (Auth::guard($guard)->check()) {
                 if ($request->wantsJson()) {
-                    return $this->succeedWithMessage(__('user.authenticated'));
+                    return $this->succeedWithMessage(__('user.authenticated.found'));
                 }
                 return redirect($this->redirectTo($request));
             }
