@@ -4,13 +4,11 @@ namespace App\Http\Controllers\v1\Auth;
 
 use App\Models\User;
 use Illuminate\Support\Str;
-use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Auth\Events\Registered;
-use Illuminate\Support\Facades\Response;
 use App\Http\Requests\v1\Auth\RegisterUserRequest;
+use App\Http\Resources\v1\UserResource;
 
 class RegisteredUserController extends Controller
 {
@@ -36,8 +34,6 @@ class RegisteredUserController extends Controller
 
         event(new Registered($user));
 
-        Auth::login($user);
-
-        return Response::noContent();
+        return new UserResource($user);
     }
 }
