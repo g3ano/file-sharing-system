@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Helpers\Slugable;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -11,6 +12,8 @@ use Illuminate\Support\Str;
  */
 class UserFactory extends Factory
 {
+    use Slugable;
+
     /**
      * The current password being used by the factory.
      */
@@ -23,10 +26,14 @@ class UserFactory extends Factory
      */
     public function definition(): array
     {
+        $username = fake()->userName();
+        $slug = $this->getSlug($username);
+
         return [
             'first_name' => fake()->firstName(),
-            'first_name' => fake()->firstName(),
-            'username' => fake()->userName(),
+            'last_name' => fake()->lastName(),
+            'slug' => $slug,
+            'username' => $username,
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
@@ -39,7 +46,7 @@ class UserFactory extends Factory
      */
     public function unverified(): static
     {
-        return $this->state(fn(array $attributes) => [
+        return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
         ]);
     }
