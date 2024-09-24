@@ -31,16 +31,16 @@ class DatabaseSeeder extends Seeder
         Workspace::factory(10)->create();
         Project::factory(10)->create();
 
-        $superAdmin = User::query()->create([
-            'first_name' => 'Super',
+        $admin = User::query()->create([
+            'first_name' => 'Admin',
             'last_name' => 'Admin',
-            'username' => 'super_admin',
-            'slug' => $this->getSlug('super_admin'),
-            'email' => 'super.admin@example.com',
-            'password' => Hash::make('super.admin@example.com'),
+            'username' => 'admin',
+            'slug' => $this->getSlug('admin'),
+            'email' => 'admin@example.com',
+            'password' => Hash::make('admin@example.com'),
         ]);
 
-        $superAdmin->roles()->attach([
+        $admin->roles()->attach([
             RoleEnum::MANAGER->value => [
                 'workspace_id' => 1,
             ],
@@ -48,7 +48,7 @@ class DatabaseSeeder extends Seeder
                 'workspace_id' => 2,
             ],
         ]);
-        $superAdmin->roles()->attach([
+        $admin->roles()->attach([
             RoleEnum::MANAGER->value => [
                 'project_id' => 1,
             ],
@@ -56,7 +56,7 @@ class DatabaseSeeder extends Seeder
                 'project_id' => 2,
             ],
         ]);
-        $superAdmin->roles()->attach(RoleEnum::ADMIN->value);
+        $admin->roles()->attach(RoleEnum::ADMIN->value);
 
         User::factory(20)->create();
     }

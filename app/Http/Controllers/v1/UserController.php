@@ -89,4 +89,43 @@ class UserController extends Controller
 
         return new UserCollection($users);
     }
+
+    /**
+     * Get paginated list of users.
+     */
+    public function getDeletedUserList(Request $request)
+    {
+        $auth = User::user();
+
+        if (!$auth || !$auth->can('viewAnyUser', User::class)) {
+            $this->failedWithMessage(__('user.not_found'), 404);
+        }
+
+        $limit = $request->query('limit') ?? $this->limit;
+        $page = $request->query('page') ?? $this->page;
+
+        $users = User::query()
+            ->onlyTrashed()
+            ->paginate(perPage: $limit, page: $page);
+
+        return new UserCollection($users);
+    }
+
+    /**
+     * Deletes user from system.
+     */
+    public function deleteUser(string $userID)
+    {
+        $auth = User::user();
+        $user = User::query()->where('id', $userID)->first();
+
+        if (!$user || !$auth->can('deleteUser', [
+            User::class,
+            $user,
+        ])) {
+            $this->failedAsNotFound('user');
+        }
+
+        $this->succeedWithStatus();
+    }
 }

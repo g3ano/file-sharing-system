@@ -19,6 +19,12 @@ class RegisteredUserController extends Controller
      */
     public function store(RegisterUserRequest $request)
     {
+        $auth = User::user();
+
+        if (!$auth || !$auth->can('createUser', User::class)) {
+            $this->failedAsNotFound('user');
+        }
+
         $data = $request->validated();
         $username = User::USERNAME_BASE . '_' . Str::random(8);
         $slug = $this->getSlug($username);
