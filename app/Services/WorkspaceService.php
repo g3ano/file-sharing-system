@@ -16,4 +16,16 @@ class WorkspaceService
             ->wherePivot('workspace_id', $workspace->id)
             ->exists();
     }
+
+    /**
+     * Determine whether a user is member of a workspace.
+     */
+    public function userIsWorkspaceMemberByID(User $user, int|string $workspaceID): bool
+    {
+        return (bool) once(function () use ($user, $workspaceID) {
+            return $user->workspaces()
+             ->wherePivot('workspace_id', $workspaceID)
+             ->exists();
+        });
+    }
 }

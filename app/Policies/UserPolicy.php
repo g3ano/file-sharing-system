@@ -12,11 +12,14 @@ use App\Services\WorkspaceService;
 
 class UserPolicy
 {
-    public function before(User $user): ?bool
+    public function before(User $user, string $ability): ?bool
     {
-        if ($user->canDo([
-            [RoleEnum::ADMIN],
-        ])) {
+        if (
+            $ability !== 'deleteUser' &&
+            $user->canDo([
+                [RoleEnum::ADMIN],
+            ])
+        ) {
             return true;
         }
 
@@ -30,6 +33,7 @@ class UserPolicy
     {
         return $user->canDo([
             [RoleEnum::MANAGER],
+            [RoleEnum::VIEWER],
         ]);
     }
 
@@ -41,11 +45,14 @@ class UserPolicy
         if (
             $user->canDo([
                 [RoleEnum::MANAGER],
+                [RoleEnum::VIEWER],
             ])
             ||
             ((new WorkspaceService())->userIsWorkspaceMember($user, $workspace) &&
                 $user->canDo([
                     [RoleEnum::MANAGER, ResourceEnum::WORKSPACE, $workspace->id],
+                    [RoleEnum::EDITOR, ResourceEnum::WORKSPACE, $workspace->id],
+                    [RoleEnum::VIEWER, ResourceEnum::WORKSPACE, $workspace->id],
                 ]))
         ) {
             return true;
@@ -62,11 +69,21 @@ class UserPolicy
         if (
             $user->canDo([
                 [RoleEnum::MANAGER],
+                [RoleEnum::VIEWER],
             ])
             ||
             ((new ProjectService())->userIsProjectMember($user, $project) &&
                 $user->canDo([
                     [RoleEnum::MANAGER, ResourceEnum::PROJECT, $project->id],
+                    [RoleEnum::EDITOR, ResourceEnum::PROJECT, $project->id],
+                    [RoleEnum::VIEWER, ResourceEnum::PROJECT, $project->id],
+                ]))
+            ||
+            ((new WorkspaceService())->userIsWorkspaceMemberByID($user, $project->workspace_id) &&
+                $user->canDo([
+                    [RoleEnum::MANAGER, ResourceEnum::WORKSPACE, $project->workspace_id],
+                    [RoleEnum::EDITOR, ResourceEnum::WORKSPACE, $project->workspace_id],
+                    [RoleEnum::VIEWER, ResourceEnum::WORKSPACE, $project->workspace_id],
                 ]))
         ) {
             return true;
@@ -86,31 +103,61 @@ class UserPolicy
     /**
      * Determine whether the user can create models.
      */
-    public function create(User $user): bool
+    public function createUser(User $user): bool
     {
+        if ($user->canDo([
+            [RoleEnum::MANAGER],
+        ])) {
+            return true;
+        }
+
         return false;
     }
 
     /**
-     * Determine whether the user can update the model.
+     * Determine whether the user can update own data.
      */
-    public function update(User $user, User $model): bool
+    public function updateUser(User $user): bool
     {
+        if ($user->canDo([
+            [RoleEnum::MANAGER],
+        ])) {
+            return true;
+        }
+
         return false;
     }
 
     /**
-     * Determine whether the user can delete the model.
+     * Determine whether the user can delete the another user.
      */
-    public function delete(User $user, User $model): bool
+    public function deleteUser(User $user, User $target): bool
     {
+        $isTargetAdminOrManager = $target->canDo([
+            [RoleEnum::ADMIN],
+            [RoleEnum::MANAGER],
+        ]);
+
+        if (!$isTargetAdminOrManager) {
+            return $user->canDo([
+                [RoleEnum::ADMIN],
+                [RoleEnum::MANAGER],
+            ]);
+        }
+
+        if ($user->canDo([
+            [RoleEnum::ADMIN],
+        ])) {
+            return true;
+        }
+
         return false;
     }
 
     /**
      * Determine whether the user can restore the model.
      */
-    public function restore(User $user, User $model): bool
+    public function restoreUser(User $user, User $target): bool
     {
         return false;
     }
@@ -118,7 +165,7 @@ class UserPolicy
     /**
      * Determine whether the user can permanently delete the model.
      */
-    public function forceDelete(User $user, User $model): bool
+    public function forceDeleteUser(User $user, User $model): bool
     {
         return false;
     }

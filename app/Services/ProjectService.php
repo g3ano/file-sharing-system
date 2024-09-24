@@ -18,4 +18,16 @@ class ProjectService
                 ->exists();
         });
     }
+
+    /**
+     * Determine whether a user is member of a project.
+     */
+    public function userIsProjectMemberByID(User $user, int|string $projectID): bool
+    {
+        return (bool) once(function () use ($user, $projectID) {
+            return $user->projects()
+                ->wherePivot('project_id', $projectID)
+                ->exists();
+        });
+    }
 }
