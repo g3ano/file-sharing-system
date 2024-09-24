@@ -2,16 +2,22 @@
 
 use App\Http\Controllers\v1\UserController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\v1\Auth\RegisteredUserController;
 
 Route::prefix('users')
     ->controller(UserController::class)
     ->group(function () {
+        Route::get('/check', 'getIsUserAuth');
+
         Route::middleware(['auth:sanctum'])
             ->group(function () {
-                Route::get('/@me', 'getAuthUser');
-            });
+                Route::post('/register', [RegisteredUserController::class, 'store'])
+                    ->name('register');
 
-        Route::get('/check', 'getIsUserAuth');
-        Route::get('/id/{id}', 'getUserById');
-        Route::get('/slug/{slug}', 'getUserBySlug');
+                Route::get('/@me', 'getAuthUser');
+                Route::get('/list', 'getUserList');
+
+                Route::get('/id/{userID}', 'getUserByID');
+                Route::get('/slug/{userSlug}', 'getUserBySlug');
+            });
     });

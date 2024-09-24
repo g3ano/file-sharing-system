@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers\v1;
 
-use App\Http\Controllers\Controller;
-use App\Http\Resources\v1\UserResource;
 use App\Models\User;
+use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Resources\v1\UserResource;
+use App\Http\Resources\v1\UserCollection;
 
 class UserController extends Controller
 {
@@ -17,40 +19,74 @@ class UserController extends Controller
         return new UserResource(User::user());
     }
 
-    public function getUserById(string $id)
+    /**
+     * Get user by ID.
+     */
+    public function getUserByID(string $userID)
     {
         $user = User::query()
-            ->where('id', $id)
+            ->where('id', $userID)
             ->first();
+        $auth = User::user();
 
-        if (!$user) {
+        if (!$user || !$auth->can('viewUser', [
+            User::class, $user,
+        ])) {
             $this->failedWithMessage(__('user.not_found'), 404);
         }
 
         return new UserResource($user);
     }
 
-    public function getUserBySlug(string $slug)
+    /**
+     * Get user by slug.
+     */
+    public function getUserBySlug(string $userSlug)
     {
-        if ($slug === '@me') {
+        if ($userSlug === '@me') {
             return $this->getAuthUser();
         }
 
         $user = User::query()
-            ->where('slug', $slug)
+            ->where('slug', $userSlug)
             ->first();
+        $auth = User::user();
 
-        if (!$user) {
+        if (!$user || !$auth->can('viewUser', [
+            User::class, $user,
+        ])) {
             $this->failedWithMessage(__('user.not_found'), 404);
         }
 
         return new UserResource($user);
     }
 
+    /**
+     * Determine whether current user is authenticated.
+     */
     public function getIsUserAuth()
     {
         return $this->succeed([
             'authenticated' => Auth::guard('web')->check(),
         ]);
+    }
+
+    /**
+     * Get paginated list of users.
+     */
+    public function getUserList(Request $request)
+    {
+        $auth = User::user();
+
+        if (!$auth || !$auth->can('viewAnyUser', User::class)) {
+            $this->failedWithMessage(__('user.not_found'), 404);
+        }
+
+        $limit = $request->query('limit') ?? $this->limit;
+        $page = $request->query('page') ?? $this->page;
+
+        $users = User::query()->paginate(perPage: $limit, page: $page);
+
+        return new UserCollection($users);
     }
 }
