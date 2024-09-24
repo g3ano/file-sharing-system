@@ -45,17 +45,17 @@ trait Relatable
         return $result;
     }
 
-    private function isValid(string $relationship)
+    private function isValid(string $relationship): bool
     {
         return in_array($relationship, $this->includes);
     }
 
-    private function isIgnored(string $relationship)
+    private function isIgnored(string $relationship): bool
     {
         return in_array($relationship, $this->includes);
     }
 
-    private function hasAny()
+    private function hasAny(): bool
     {
         return count($this->relationships) || count($this->ignore);
     }

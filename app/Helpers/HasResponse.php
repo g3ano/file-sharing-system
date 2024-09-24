@@ -4,6 +4,7 @@ namespace App\Helpers;
 
 use Illuminate\Http\Exceptions\HttpResponseException;
 use RuntimeException;
+use Throwable;
 
 trait HasResponse
 {
@@ -59,15 +60,17 @@ trait HasResponse
 
     public function failedAsNotFound(?string $resource = null)
     {
-        $this->failed([
-            'message' => 'Resource is not found',
-        ], 404);
+        $message = $resource
+            ? __("$resource.not_found")
+            : 'Resource is not found';
+
+        $this->failedWithMessage($message, 404);
     }
 
     /**
      * @throws RuntimeException
      */
-    public function failedAtRuntime(string $error, ?string $key = null, ?int $code = 400)
+    public static function failedAtRuntime(string $error, ?int $code = 400, ?string $key = null)
     {
         $error = is_null($key) ? $error : $key . '|' . $error;
 
@@ -79,8 +82,10 @@ trait HasResponse
      * where the first value represent the field name, and the second one
      * is its value.
      */
-    public function parseExceptionError(string $error): array
+    public function parseExceptionError(Throwable $e): array
     {
+        $error = $e->getMessage();
+
         if (!$error) {
             return [
                 'message' => '',
@@ -99,8 +104,10 @@ trait HasResponse
         ];
     }
 
-    public function parseExceptionCode(?int $code = null)
+    public function parseExceptionCode(Throwable $e)
     {
+        $code = $e->getCode();
+
         if (is_null($code)) {
             return 400;
         }
