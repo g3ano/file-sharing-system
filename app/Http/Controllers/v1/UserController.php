@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Resources\v1\UserResource;
 use App\Http\Resources\v1\UserCollection;
+use Illuminate\Support\Facades\Log;
 
 class UserController extends Controller
 {
@@ -126,6 +127,14 @@ class UserController extends Controller
             $this->failedAsNotFound('user');
         }
 
-        $this->succeedWithStatus();
+        if (!$user->delete()) {
+            Log::error('Failed to deleted user', [
+                'userID' => $user->id,
+            ]);
+
+            $this->failedWithMessage(__('user.delete.soft'), 500);
+        }
+
+        return $this->succeedWithStatus();
     }
 }

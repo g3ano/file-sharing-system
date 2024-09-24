@@ -13,10 +13,11 @@ Route::prefix('users')
             ->group(function () {
                 Route::post('/register', [RegisteredUserController::class, 'store'])
                     ->name('register');
-                Route::delete('/{userID}', 'deleteUser');
+                Route::delete('/delete/{userID}', 'deleteUser');
 
                 Route::get('/@me', 'getAuthUser');
                 Route::get('/list', 'getUserList');
+                Route::get('/list/deleted', 'getDeletedUserList');
 
                 Route::get('/id/{userID}', 'getUserByID');
                 Route::get('/slug/{userSlug}', 'getUserBySlug');

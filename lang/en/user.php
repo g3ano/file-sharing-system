@@ -7,4 +7,7 @@ return [
         'found' => 'Authenticated users can\'t perform this action',
         'logout' => 'You\'re now logged out',
     ],
+    'deleted' => [
+        'soft' => 'Failed to delete user.',
+    ],
 ];
