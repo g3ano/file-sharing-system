@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Helpers\HasResponse;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Log;
 
 class BaseRequest extends FormRequest
 {
@@ -22,8 +23,8 @@ class BaseRequest extends FormRequest
     protected function failedValidation(Validator $validator)
     {
         $errors = $validator->errors()->messages();
-
         $result = [];
+
         foreach ($errors as $column => $errorsArr) {
             $isNested = str_contains($column, '.');
 
@@ -37,45 +38,62 @@ class BaseRequest extends FormRequest
             }
 
             $columnArr = explode('.', $column);
-            $result = array_merge(
-                $result,
-                $this->nestArr($columnArr, $errorsArr[0])
-            );
+
+            $result = $this->nestArr($columnArr, $errorsArr[0]);
         }
 
         $this->failed($result, 422);
     }
 
-    private function nestArr(array $arr, string $message)
+    /**
+     * Spread Laravel's dot separated key into nested array,
+     * and fill empty elements with `null`.
+     */
+    private function nestArr(array $arr, string $message): array|string
     {
         if (empty($arr)) {
-            return [];
+            return $message;
         }
 
         $key = array_shift($arr);
 
-        if (empty($arr)) {
-            return [
-                $key => $message,
-            ];
+        if (is_numeric($key)) {
+            $result = [];
+
+            //Fill up valid inputs with null up to index
+            //of the errored value.
+            for ($i = 0; $i < min((int) $key, 50); $i++) {
+                $result[] = null;
+            }
+
+            $result[] = empty($arr)
+                ? $message
+                : $this->nestArr($arr, $message);
+
+            Log::info('', [
+                'result' => $result,
+            ]);
+
+            return $result;
         }
+
         return [
             $key => $this->nestArr($arr, $message),
         ];
     }
 
     /**
-     * Transforms the given data before they get validated
-     *
-     * @return array
+     * Transforms the given data before they get validated.
      */
-    public function formatPreValidation(array $arr)
+    public function formatPreValidation(array $arr): array
     {
         $result = [];
 
         foreach ($arr as $column => $value) {
             $key = strtolower(preg_replace('/([A-Z])/', '_$0', $column));
-            $result[$key] = $value;
+            $result[$key] = is_array($value)
+                ? $this->formatPreValidation($value)
+                : $value;
         }
 
         return $result;
