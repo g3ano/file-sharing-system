@@ -68,8 +68,8 @@ trait Roleable
 
                     $query->orWhere(function (Builder $query) use ($whereGroup, $roleService, $role, $user) {
                         $resourceMeta = $roleService->getResourceSearchingData(
-                            $role->value,
                             $whereGroup,
+                            $role->value,
                             $user->id,
                         );
 
