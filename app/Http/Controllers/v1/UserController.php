@@ -86,7 +86,9 @@ class UserController extends Controller
         $limit = $request->query('limit') ?? $this->limit;
         $page = $request->query('page') ?? $this->page;
 
-        $users = User::query()->paginate(perPage: $limit, page: $page);
+        $users = User::query()
+            ->orderBy('created_at', 'desc')
+            ->paginate(perPage: $limit, page: $page);
 
         return new UserCollection($users);
     }
@@ -107,6 +109,7 @@ class UserController extends Controller
 
         $users = User::query()
             ->onlyTrashed()
+            ->orderBy('created_at', 'desc')
             ->paginate(perPage: $limit, page: $page);
 
         return new UserCollection($users);
