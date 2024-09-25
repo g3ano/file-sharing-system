@@ -23,9 +23,10 @@ class WorkspaceFactory extends Factory
         $slug = $this->getSlug($name);
 
         return [
+            'user_id' => fake()->numberBetween(1, 22),
             'name' => $name,
             'slug' => $slug,
-            'description' => fake()->text(100),
+            'description' => fake()->text(200),
         ];
     }
 }

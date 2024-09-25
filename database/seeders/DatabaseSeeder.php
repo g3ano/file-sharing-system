@@ -28,9 +28,6 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
-        Workspace::factory(10)->create();
-        Project::factory(10)->create();
-
         $admin = User::query()->create([
             'first_name' => 'Admin',
             'last_name' => 'Admin',
@@ -39,6 +36,10 @@ class DatabaseSeeder extends Seeder
             'email' => 'admin@example.com',
             'password' => Hash::make('admin@example.com'),
         ]);
+
+        User::factory(20)->create();
+        Workspace::factory(10)->create();
+        Project::factory(10)->create();
 
         $admin->roles()->attach([
             RoleEnum::MANAGER->value => [
@@ -57,7 +58,5 @@ class DatabaseSeeder extends Seeder
             ],
         ]);
         $admin->roles()->attach(RoleEnum::ADMIN->value);
-
-        User::factory(20)->create();
     }
 }

@@ -23,6 +23,10 @@ class WorkspaceResource extends BaseResource
                 'description' => $this->description,
                 'createdAt' => $this->created_at,
             ]),
+            'relationships' => $this->getRelationships([
+                'owner' => new UserResource($this->whenLoaded('owner')),
+                'members' => new UserCollection($this->whenLoaded('members')),
+            ]),
         ];
     }
 }
