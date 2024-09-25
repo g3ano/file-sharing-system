@@ -26,11 +26,15 @@ class RolePolicy
         return null;
     }
 
-    public function grantUserGlobalRole(User $user): bool
+    public function grantUserGlobalRole(User $user, int|string $roleID): bool
     {
-        return $user->canDo([
+        if ($user->canDo([
             [RoleEnum::MANAGER],
-        ]);
+        ]) && (int) $roleID !== RoleEnum::ADMIN->value) {
+            return true;
+        }
+
+        return false;
     }
 
     public function grantUserWorkspaceRole(User $user, Workspace $workspace, User $target): bool
