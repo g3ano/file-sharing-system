@@ -7,7 +7,6 @@ use App\Enums\RoleEnum;
 use App\Models\Role;
 use App\Models\RoleUser;
 use App\Models\User;
-use Illuminate\Support\Collection;
 use RuntimeException;
 use Throwable;
 use TypeError;
@@ -56,7 +55,7 @@ class RoleService extends BaseService
     public function checkUserRole(User $user, array $data): bool
     {
         try {
-            return $user->canDo($this->formatRoleCheckingData($data));
+            return $user->canDo($this->prepareRoleSearchData($data));
         } catch (Throwable $e) {
             $this->failedAtRuntime($e->getMessage(), $e->getCode());
         }
@@ -72,7 +71,7 @@ class RoleService extends BaseService
         $data = $this->prepareRoleDataForDB($user->id, $data);
 
         $this->isUserRoleExists($data);
-        $this->userResetContextRoles([$user->id], $context);
+        $this->resetUserRolesInContext([$user->id], $context);
 
         $user->roles()->attach($data['roleID'], $data['data']);
     }
@@ -102,10 +101,10 @@ class RoleService extends BaseService
     }
 
     /**
-     * Get resource metadata, such as full qualified foreign key
-     * and searching proper array.
+     * Get resource metadata, such as full qualified foreign key,
+     * searching array, and data array formatted for DB insert action.
      */
-    public static function getResourceSearchingData(?array $context = null, ?int $roleID = null, int|string|null $userID = null): array
+    public static function prepareResourceSearchData(?array $context = null, ?int $roleID = null, int|string|null $userID = null): array
     {
         $result = [];
         $excludedResources = [
@@ -113,36 +112,29 @@ class RoleService extends BaseService
         ];
         [$resource, $resourceID] = $context ?? [null, null];
 
-        if (!is_null($resource) && !($resource instanceof ResourceEnum)) {
+        if ($resource && !($resource instanceof ResourceEnum)) {
             $resource = ResourceEnum::fromName($resource);
         }
 
-        $result = Collection::make(ResourceEnum::cases())
-            ->filter(
-                function (ResourceEnum $case) use ($resource, $excludedResources) {
-                    return $case !== $resource &&
-                        !in_array($case, $excludedResources);
-                }
+        $result = array_map(
+            fn (ResourceEnum $case) => [self::getResourceProperFieldName($case), null],
+            array_filter(
+                ResourceEnum::cases(),
+                fn (ResourceEnum $case) => $case !== $resource && !in_array($case, $excludedResources)
             )
-            ->map(function (ResourceEnum $case) {
-                return self::getResourceProperFieldName($case);
-            })
-            ->map(function (string $resourceName) {
-                return [$resourceName, null];
-            })
-            ->all();
+        );
 
-        if (!is_null($resource)) {
+        if ($resource) {
             $result[] = [
                 self::getResourceProperFieldName($resource), $resourceID,
             ];
         }
 
-        if (!is_null($userID)) {
+        if ($userID) {
             $result[] = ['user_id', $userID];
         }
 
-        if (!is_null($roleID)) {
+        if ($roleID) {
             $result[] = ['role_id', $roleID];
         }
 
@@ -150,28 +142,14 @@ class RoleService extends BaseService
     }
 
     /**
-     * Resets users roles within context.
+     * Get a data array for that DB insert action.
      */
-    public function userResetContextRoles(array $users, ?array $context = null): int
-    {
-        if (!array_is_list($users) || !empty($context) && !array_is_list($context)) {
-            return 0;
-        }
-
-        $resourceMatchingData = $this->getResourceSearchingData(context: $context);
-
-        return (int) RoleUser::query()
-            ->where($resourceMatchingData)
-            ->whereIn('user_id', $users)
-            ->delete();
-    }
-
-    public function getResourceDBData(
+    public function prepareResourceInsertData(
         ?array $context = null,
         int|string|null $roleID = null,
         int|string|array|null $userID = null
     ): array {
-        $userID = is_array($userID) ? $userID : [$userID];
+        $userID = array_filter(is_array($userID) ? $userID : [$userID], fn ($id) => !is_null($id));
         $result = [];
         [$resource, $resourceID] = $context ?? [null, null];
 
@@ -180,19 +158,15 @@ class RoleService extends BaseService
             : $resource;
 
         foreach ($userID as $id) {
-            if (is_null($id)) {
-                continue;
-            }
-
             $entry = [
                 'user_id' => $id,
             ];
 
-            if (!is_null($resource)) {
+            if ($resource) {
                 $entry[$this->getResourceProperFieldName($resource)] = $resourceID ?? null;
             }
 
-            if (!is_null($roleID)) {
+            if ($roleID) {
                 $entry['role_id'] = $roleID;
             }
 
@@ -205,11 +179,28 @@ class RoleService extends BaseService
     }
 
     /**
+     * Resets users roles within context.
+     */
+    public function resetUserRolesInContext(array $users = [], ?array $context = null): int
+    {
+        if (!empty($users) || !array_is_list($users) || !empty($context) && !array_is_list($context)) {
+            return 0;
+        }
+
+        $resourceMatchingData = $this->prepareResourceSearchData(context: $context);
+
+        return (int) RoleUser::query()
+            ->where($resourceMatchingData)
+            ->whereIn('user_id', $users)
+            ->delete();
+    }
+
+    /**
      * Prepare data to use to check Role availability.
      *
      * @throws TypeError
      */
-    protected function formatRoleCheckingData(array $data): array
+    protected function prepareRoleSearchData(array $data): array
     {
         [
             'role_id' => $roleID,
@@ -238,13 +229,9 @@ class RoleService extends BaseService
         ] = $data;
 
         $result['roleID'] = $roleID;
-        $result['data'] = $this->getResourceDBData($context, userID: $userID);
-        $result['search'] = $this->getResourceSearchingData($context, $roleID, $userID);
+        $result['data'] = $this->prepareResourceInsertData($context, userID: $userID);
+        $result['search'] = $this->prepareResourceSearchData($context, $roleID, $userID);
 
         return $result;
     }
-
-    /**
-     * Get list of data expected by QueryBuilder.
-     */
 }

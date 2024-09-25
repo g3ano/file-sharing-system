@@ -110,7 +110,7 @@ class WorkspaceService extends BaseService
             return null;
         }
 
-        return $roleService->userResetContextRoles($members, [
+        return $roleService->resetUserRolesInContext($members, [
             ResourceEnum::WORKSPACE, $workspace->id,
         ]);
     }
@@ -122,7 +122,7 @@ class WorkspaceService extends BaseService
         }
 
         $context = [ResourceEnum::WORKSPACE, $workspace->id];
-        $data = $roleService->getResourceDBData($context, RoleEnum::VIEWER->value, $members);
+        $data = $roleService->prepareResourceInsertData($context, RoleEnum::VIEWER->value, $members);
 
         return RoleUser::query()->insert($data);
     }

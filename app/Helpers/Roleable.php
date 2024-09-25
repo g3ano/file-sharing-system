@@ -67,7 +67,7 @@ trait Roleable
                     $role = array_shift($whereGroup);
 
                     $query->orWhere(function (Builder $query) use ($whereGroup, $roleService, $role, $user) {
-                        $resourceMeta = $roleService->getResourceSearchingData(
+                        $resourceMeta = $roleService->prepareResourceSearchData(
                             $whereGroup,
                             $role->value,
                             $user->id,
