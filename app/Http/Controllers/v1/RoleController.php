@@ -115,11 +115,14 @@ class RoleController extends Controller
         $user = User::query()->where('id', $userID)->first();
         $auth = User::user();
 
-        if (!$user || !$auth->can('grantUserGlobalRole', Role::class)) {
+        $data = $request->validated();
+
+        if (!$user || !$auth->can('grantUserGlobalRole', [
+            Role::class,
+            $data['role_id'],
+        ])) {
             $this->failedAsNotFound('user');
         }
-
-        $data = $request->validated();
 
         try {
             $this->roleService->grantUserRole($user, $data);
