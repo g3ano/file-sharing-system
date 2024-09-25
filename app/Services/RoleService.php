@@ -56,7 +56,6 @@ class RoleService extends BaseService
     public function checkUserRole(User $user, array $data): bool
     {
         try {
-            // $this->failedAtRuntime(json_encode($data));
             return $user->canDo($this->formatRoleCheckingData($data));
         } catch (Throwable $e) {
             $this->failedAtRuntime($e->getMessage(), $e->getCode());
@@ -69,8 +68,11 @@ class RoleService extends BaseService
      */
     public function grantUserRole(User $user, array $data)
     {
+        $context = $data['context'];
         $data = $this->prepareRoleDataForDB($user->id, $data);
+
         $this->isUserRoleExists($data);
+        $this->userResetContextRoles([$user->id], $context);
 
         $user->roles()->attach($data['roleID'], $data['data']);
     }
@@ -103,7 +105,7 @@ class RoleService extends BaseService
      * Get resource metadata, such as full qualified foreign key
      * and searching proper array.
      */
-    public static function getResourceSearchingData(int $roleID, ?array $context = null, int|string|null $userID = null): array
+    public static function getResourceSearchingData(?array $context = null, ?int $roleID = null, int|string|null $userID = null): array
     {
         $result = [];
         $excludedResources = [
@@ -140,9 +142,66 @@ class RoleService extends BaseService
             $result[] = ['user_id', $userID];
         }
 
-        $result[] = ['role_id', $roleID];
+        if (!is_null($roleID)) {
+            $result[] = ['role_id', $roleID];
+        }
 
         return $result;
+    }
+
+    /**
+     * Resets users roles within context.
+     */
+    public function userResetContextRoles(array $users, ?array $context = null): int
+    {
+        if (!array_is_list($users) || !empty($context) && !array_is_list($context)) {
+            return 0;
+        }
+
+        $resourceMatchingData = $this->getResourceSearchingData(context: $context);
+
+        return (int) RoleUser::query()
+            ->where($resourceMatchingData)
+            ->whereIn('user_id', $users)
+            ->delete();
+    }
+
+    public function getResourceDBData(
+        ?array $context = null,
+        int|string|null $roleID = null,
+        int|string|array|null $userID = null
+    ): array {
+        $userID = is_array($userID) ? $userID : [$userID];
+        $result = [];
+        [$resource, $resourceID] = $context ?? [null, null];
+
+        $resource = !is_null($resource) && !($resource instanceof ResourceEnum)
+            ? ResourceEnum::fromName($resource)
+            : $resource;
+
+        foreach ($userID as $id) {
+            if (is_null($id)) {
+                continue;
+            }
+
+            $entry = [
+                'user_id' => $id,
+            ];
+
+            if (!is_null($resource)) {
+                $entry[$this->getResourceProperFieldName($resource)] = $resourceID ?? null;
+            }
+
+            if (!is_null($roleID)) {
+                $entry['role_id'] = $roleID;
+            }
+
+            $result[] = $entry;
+        }
+
+        return count($result) === 1
+            ? $result[0]
+            : $result;
     }
 
     /**
@@ -179,25 +238,13 @@ class RoleService extends BaseService
         ] = $data;
 
         $result['roleID'] = $roleID;
-        $result['data'] = $this->getResourceDBData($context, $userID);
-        $result['search'] = $this->getResourceSearchingData($roleID, $context, $userID);
+        $result['data'] = $this->getResourceDBData($context, userID: $userID);
+        $result['search'] = $this->getResourceSearchingData($context, $roleID, $userID);
 
         return $result;
     }
 
-    protected function getResourceDBData(?array $context, int|string|null $userID = null): array
-    {
-        $dbData = [
-            'user_id' => $userID,
-        ];
-
-        if (
-            !empty($context) && !is_null($context[0] ?? null) && !is_null($context[1] ?? null)
-        ) {
-            $resource = ResourceEnum::fromName($context[0] ?? null);
-            $dbData[$this->getResourceProperFieldName($resource)] = $context[1] ?? null;
-        }
-
-        return $dbData;
-    }
+    /**
+     * Get list of data expected by QueryBuilder.
+     */
 }
