@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\RoleEnum;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -12,6 +13,10 @@ class Role extends Model
 
     protected $fillable = [
         'name', 'slug',
+    ];
+
+    public static $validGlobalRoles = [
+        RoleEnum::ADMIN->value, RoleEnum::MANAGER->value, RoleEnum::VIEWER->value,
     ];
 
     public function users(): BelongsToMany
@@ -26,10 +31,8 @@ class Role extends Model
         return $this->hasManyThrough(
             Workspace::class,
             RoleUser::class,
-            'role_id', //Field that references Role on pivot
-            'id', //Field that identifies workspace on Workspace
-            'id', //Field to match against pivot Role foreign key
-            'workspace_id', //Field that identifies workspace on pivot
+            null,
+            'id',
         );
     }
 

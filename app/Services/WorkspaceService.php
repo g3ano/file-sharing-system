@@ -94,6 +94,7 @@ class WorkspaceService extends BaseService
             DB::beginTransaction();
 
             $workspace->members()->detach($members);
+
             $this->syncWorkspaceMemberRolesAfterRemoval($workspace, $members);
 
             DB::commit();
@@ -132,10 +133,11 @@ class WorkspaceService extends BaseService
      */
     public function getUserJoinedWorkspaces(User $auth, User $target, int|string $page = 1, int|string $limit = 10)
     {
-        //return all auth user workspaces.
+        //return all target user workspaces.
         if ($auth->canDo([
             [RoleEnum::ADMIN],
             [RoleEnum::MANAGER],
+            [RoleEnum::VIEWER],
         ])) {
             return $target->workspaces()->paginate(perPage: $limit, page: $page);
         }
@@ -150,6 +152,32 @@ class WorkspaceService extends BaseService
             })
             ->groupBy('workspaces.id')
             ->havingRaw('COUNT(DISTINCT user_workspace.user_id) = 2')
+            ->paginate(perPage: $limit, page: $page);
+    }
+
+    /**
+     * Get list of workspace depending on user role.
+     */
+    public function getWorkspaceListByRole(User $user, array $includes, int $page, int $limit)
+    {
+        $query = Workspace::query()
+            ->with($includes)
+            ->select('workspaces.*')
+            ->join('role_user', 'workspaces.id', 'role_user.workspace_id')
+            ->groupBy('workspaces.id');
+
+        if ($user->canDo([
+            [RoleEnum::ADMIN],
+            [RoleEnum::MANAGER],
+            [RoleEnum::VIEWER],
+        ])) {
+            return $query
+                ->paginate(perPage: $limit, page: $page);
+        }
+
+        return $query
+            ->where('role_user.user_id', $user->id)
+            ->whereNotNull('role_user.workspace_id')
             ->paginate(perPage: $limit, page: $page);
     }
 }

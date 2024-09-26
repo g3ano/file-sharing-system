@@ -25,7 +25,7 @@ class GrantUserRoleRequest extends BaseRequest
     {
         return [
             'role_id' => [
-                'bail', 'required', 'numeric', Rule::exists(Role::class, 'id'),
+                'bail', 'required', 'numeric', Rule::in(Role::$validGlobalRoles),
             ],
             'context' => [
                 'bail', 'array', 'nullable', 'present', 'min:2', 'max:2',

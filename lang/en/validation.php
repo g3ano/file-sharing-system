@@ -172,6 +172,10 @@ return [
     */
 
     'custom' => [
+        'roles' => [
+            'context' => 'Context is invalid',
+            'resource_member' => 'User is not a member of :resource',
+        ],
     ],
 
     /*

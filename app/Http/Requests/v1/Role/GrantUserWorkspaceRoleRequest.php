@@ -4,7 +4,9 @@ namespace App\Http\Requests\v1\Role;
 
 use App\Http\Requests\BaseRequest;
 use App\Models\Role;
+use App\Models\User;
 use App\Models\Workspace;
+use App\Rules\v1\UserIsWorkspaceMember;
 use Illuminate\Validation\Rule;
 
 class GrantUserWorkspaceRoleRequest extends BaseRequest
@@ -25,6 +27,10 @@ class GrantUserWorkspaceRoleRequest extends BaseRequest
     public function rules(): array
     {
         return [
+            'user_id' => [
+                'bail', 'required', 'numeric', Rule::exists(User::class, 'id'),
+                new UserIsWorkspaceMember(),
+            ],
             'role_id' => [
                 'bail', 'required', 'numeric', Rule::exists(Role::class, 'id')->whereIn('id', Workspace::$validRoles),
             ],
@@ -32,5 +38,14 @@ class GrantUserWorkspaceRoleRequest extends BaseRequest
                 'bail', 'array', 'nullable', 'present', 'min:2', 'max:2',
             ],
         ];
+    }
+
+    protected function prepareForValidation()
+    {
+        parent::prepareForValidation();
+
+        $this->merge([
+            'user_id' => $this->userID,
+        ]);
     }
 }

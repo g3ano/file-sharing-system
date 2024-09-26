@@ -22,6 +22,9 @@ class UserResource extends BaseResource
                 'lastName' => $this->last_name,
                 'slug' => $this->slug,
                 'username' => $this->username,
+                'email' => $this->includeEmail
+                    ? $this->email
+                    : null,
                 'createAt' => $this->created_at,
             ]),
             'relationships' => $this->getRelationships([]),

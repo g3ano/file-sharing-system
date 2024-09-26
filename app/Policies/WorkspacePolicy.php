@@ -27,7 +27,6 @@ class WorkspacePolicy
     {
         if ($user->canDo([
             [RoleEnum::MANAGER],
-            [RoleEnum::EDITOR],
             [RoleEnum::VIEWER],
         ])) {
             return true;
@@ -43,7 +42,6 @@ class WorkspacePolicy
     {
         if ($user->canDo([
             [RoleEnum::MANAGER],
-            [RoleEnum::EDITOR],
             [RoleEnum::VIEWER],
             [RoleEnum::MANAGER, ResourceEnum::WORKSPACE, $workspace->id],
             [RoleEnum::EDITOR, ResourceEnum::WORKSPACE, $workspace->id],
@@ -62,7 +60,6 @@ class WorkspacePolicy
     {
         if ($user->canDo([
             [RoleEnum::MANAGER],
-            [RoleEnum::EDITOR],
             [RoleEnum::VIEWER],
             [RoleEnum::MANAGER, ResourceEnum::WORKSPACE, $workspace->id],
             [RoleEnum::EDITOR, ResourceEnum::WORKSPACE, $workspace->id],
