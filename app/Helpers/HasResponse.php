@@ -19,6 +19,17 @@ trait HasResponse
         );
     }
 
+    public function succeedWithPagination(array $data = [], $page = 1, $pages = 1, int $status = 200, $headers = [])
+    {
+        return $this->succeed([
+            'data' => $data,
+            'pagination' => [
+                'page' => $page,
+                'pages' => $pages,
+            ],
+        ], $status, false, $headers);
+    }
+
     public function succeedWithStatus(array $data = [], int $status = 200, array $headers = [])
     {
         return $this->succeed([

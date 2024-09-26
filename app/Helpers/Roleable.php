@@ -51,6 +51,33 @@ trait Roleable
     }
 
     /**
+     * Checks if user is a manager of at least one workspace.
+     */
+    public function isAnyWorkspaceManager(): bool
+    {
+        return RoleUser::query()
+                ->where('user_id', $this->id)
+                ->where('role_id', RoleEnum::MANAGER)
+                ->whereNotNull('workspace_id')
+                ->whereNull('project_id')
+                ->exists();
+    }
+
+    /**
+     * Checks if user is a manager of at least one project.
+     */
+    public function isAnyProjectManager(): bool
+    {
+        return once(
+            fn () => RoleUser::query()
+                ->where('user_id', $this->id)
+                ->whereNotNull('project_id')
+                ->whereNull('workspace_id')
+                ->exists()
+        );
+    }
+
+    /**
      * Determine user ability using roles data array.
      *
      * @throws RuntimeException
