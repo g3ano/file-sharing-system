@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Http\Controllers\v1;
 
 use Throwable;
@@ -64,10 +62,7 @@ class WorkspaceController extends Controller
             $this->failedAsNotFound('workspace');
         }
 
-        $workspaces = Workspace::query()
-            ->with($includes)
-            ->orderBy('created_at', 'desc')
-            ->paginate(perPage: $limit, page: $page);
+        $workspaces = $this->workspaceService->getWorkspaceListByRole($auth, $includes, $page, $limit);
 
         return new WorkspaceCollection($workspaces);
     }
@@ -171,14 +166,10 @@ class WorkspaceController extends Controller
         $user = User::query()->where('id', $userID)->first();
         $auth = User::user();
 
-        if (!$user || !$auth->can('viewUserJoinedWorkspaces', [
-            Workspace::class, $user,
-        ])) {
-            $this->failedAsNotFound('user');
-        }
-
         $page = $request->get('page') ?? $this->page;
         $limit = $request->get('limit') ?? $this->limit;
+
+        return $user->workspaces()->get();
 
         $workspaces = $this->workspaceService->getUserJoinedWorkspaces($auth, $user, $page, $limit);
 
