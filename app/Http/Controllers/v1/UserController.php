@@ -17,7 +17,10 @@ class UserController extends Controller
      */
     public function getAuthUser()
     {
-        return new UserResource(User::user());
+        $auth = User::user();
+        $auth->includeEmail = true;
+
+        return new UserResource($auth);
     }
 
     /**
