@@ -70,7 +70,7 @@ class RoleService extends BaseService
         $context = $data['context'];
         $data = $this->prepareRoleDataForDB($user->id, $data);
 
-        $this->isUserRoleExists($data);
+        $this->isUserRoleExists($data['search']);
         $this->resetUserRolesInContext([$user->id], $context);
 
         $user->roles()->attach($data['roleID'], $data['data']);
@@ -83,7 +83,7 @@ class RoleService extends BaseService
     {
         if (
             RoleUser::query()
-                ->where($data['search'])
+                ->where($data)
                 ->exists()
         ) {
             $this->failedAtRuntime(__('role.grant.exists'), 422);
