@@ -6,6 +6,7 @@ use App\Http\Requests\BaseRequest;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Rules\v1\ConstrainManagerRoleResource;
 use App\Rules\v1\UserIsWorkspaceMember;
 use Illuminate\Validation\Rule;
 
@@ -32,7 +33,7 @@ class GrantUserWorkspaceRoleRequest extends BaseRequest
                 new UserIsWorkspaceMember(),
             ],
             'role_id' => [
-                'bail', 'required', 'numeric', Rule::exists(Role::class, 'id')->whereIn('id', Workspace::$validRoles),
+                'bail', 'required', 'numeric', Rule::exists(Role::class, 'id')->whereIn('id', Workspace::$validRoles), new ConstrainManagerRoleResource(),
             ],
             'context' => [
                 'bail', 'array', 'nullable', 'present', 'min:2', 'max:2',

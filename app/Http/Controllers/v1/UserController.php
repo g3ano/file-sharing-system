@@ -8,10 +8,20 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Resources\v1\UserResource;
 use App\Http\Resources\v1\UserCollection;
+use App\Services\UserService;
 use Illuminate\Support\Facades\Log;
 
 class UserController extends Controller
 {
+    protected $relationships;
+    protected $userService;
+
+    public function __construct(UserService $userService)
+    {
+        $this->userService = $userService;
+        $this->relationships = [];
+    }
+
     /**
      * Get current **Authenticated** user
      */
@@ -45,7 +55,7 @@ class UserController extends Controller
     /**
      * Get user by slug.
      */
-    public function getUserBySlug(string $userSlug)
+    public function getUserBySlug(Request $request, string $userSlug)
     {
         if ($userSlug === '@me') {
             return $this->getAuthUser();
@@ -89,9 +99,7 @@ class UserController extends Controller
         $limit = $request->query('limit') ?? $this->limit;
         $page = $request->query('page') ?? $this->page;
 
-        $users = User::query()
-            ->orderBy('created_at', 'desc')
-            ->paginate(perPage: $limit, page: $page);
+        $users = $this->userService->getUserListByRole($auth, page: $page, limit: $limit);
 
         return new UserCollection($users);
     }
@@ -142,5 +150,26 @@ class UserController extends Controller
         }
 
         return $this->succeedWithStatus();
+    }
+
+    public function searchUserList(Request $request)
+    {
+        $searchValue = $request->query('searchValue') ?? '';
+
+        if (!$searchValue) {
+            return $this->succeedWithPagination();
+        }
+
+        $auth = User::user();
+        $limit = $request->query('limit') ?? $this->limit;
+        $page = $request->query('page') ?? $this->page;
+
+        if (!$auth) {
+            $this->failedAsNotFound('user');
+        }
+
+        $users = $this->userService->searchForUsers($auth, $searchValue, $page, $limit);
+
+        return new UserCollection($users);
     }
 }

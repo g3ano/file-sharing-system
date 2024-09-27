@@ -22,12 +22,14 @@ class UserResource extends BaseResource
                 'lastName' => $this->last_name,
                 'slug' => $this->slug,
                 'username' => $this->username,
-                'email' => $this->includeEmail
+                'email' => $this->includeEmail ?? null
                     ? $this->email
                     : null,
                 'createAt' => $this->created_at,
             ]),
-            'relationships' => $this->getRelationships([]),
+            'relationships' => $this->getRelationships([
+                'roles' => new RoleCollection($this->whenLoaded('roles')),
+            ]),
         ];
     }
 }

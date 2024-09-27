@@ -21,5 +21,7 @@ Route::prefix('users')
 
                 Route::get('/id/{userID}', 'getUserByID');
                 Route::get('/slug/{userSlug}', 'getUserBySlug');
+
+                Route::get('/search', 'searchUserList');
             });
     });

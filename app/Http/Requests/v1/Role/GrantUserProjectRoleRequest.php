@@ -2,10 +2,13 @@
 
 namespace App\Http\Requests\v1\Role;
 
-use App\Http\Requests\BaseRequest;
-use App\Models\Project;
 use App\Models\Role;
+use App\Models\User;
+use App\Models\Project;
 use Illuminate\Validation\Rule;
+use App\Http\Requests\BaseRequest;
+use App\Rules\v1\UserIsProjectMember;
+use App\Rules\v1\ConstrainManagerRoleResource;
 
 class GrantUserProjectRoleRequest extends BaseRequest
 {
@@ -25,8 +28,12 @@ class GrantUserProjectRoleRequest extends BaseRequest
     public function rules(): array
     {
         return [
+            'user_id' => [
+                'bail', 'required', 'numeric', Rule::exists(User::class, 'id'),
+                new UserIsProjectMember(),
+            ],
             'role_id' => [
-                'bail', 'required', 'numeric', Rule::exists(Role::class, 'id')->whereIn('id', Project::$validRoles),
+                'bail', 'required', 'numeric', Rule::exists(Role::class, 'id')->whereIn('id', Project::$validRoles), new ConstrainManagerRoleResource(),
             ],
             'context' => [
                 'bail', 'array', 'nullable', 'present', 'min:2', 'max:2',
