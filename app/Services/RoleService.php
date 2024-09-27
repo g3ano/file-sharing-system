@@ -21,7 +21,7 @@ class RoleService extends BaseService
         /**
          * @var LengthAwarePaginator
          */
-        $roles = $user->roles()->paginate(perPage: $limit, page: $page);
+        $roles = $user->roles()->orderByPivot('created_at', 'desc')->paginate(perPage: $limit, page: $page);
         $roles = $roles->through(function ($item) {
             $item->context = $this->getRoleContext($item);
             return $item;
@@ -183,7 +183,7 @@ class RoleService extends BaseService
      */
     public function resetUserRolesInContext(array $users = [], ?array $context = null): int
     {
-        if (!empty($users) || !array_is_list($users) || !empty($context) && !array_is_list($context)) {
+        if (empty($users) || !array_is_list($users) || !empty($context) && !array_is_list($context)) {
             return 0;
         }
 

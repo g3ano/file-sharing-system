@@ -169,8 +169,6 @@ class WorkspaceController extends Controller
         $page = $request->get('page') ?? $this->page;
         $limit = $request->get('limit') ?? $this->limit;
 
-        return $user->workspaces()->get();
-
         $workspaces = $this->workspaceService->getUserJoinedWorkspaces($auth, $user, $page, $limit);
 
         return new WorkspaceCollection($workspaces);
