@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\v1;
 
+use App\Enums\RoleEnum;
 use App\Models\User;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
@@ -29,6 +30,15 @@ class UserController extends Controller
     {
         $auth = User::user();
         $auth->includeEmail = true;
+        $auth->abilities = [
+            'canViewAllUsers' => $auth->canDo([
+                [RoleEnum::ADMIN],
+                [RoleEnum::MANAGER],
+                [RoleEnum::VIEWER],
+            ]),
+            'canViewWorkspaceMembers' => $auth->isAnyWorkspaceManager(),
+            'canViewProjectMembers' => $auth->isAnyProjectManager(),
+        ];
 
         return new UserResource($auth);
     }

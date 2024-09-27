@@ -4,6 +4,7 @@ namespace App\Http\Resources\v1;
 
 use App\Http\Resources\BaseResource;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\MissingValue;
 
 class UserResource extends BaseResource
 {
@@ -25,11 +26,23 @@ class UserResource extends BaseResource
                 'email' => $this->includeEmail ?? null
                     ? $this->email
                     : null,
-                'createAt' => $this->created_at,
+                'createdAt' => $this->created_at,
             ]),
             'relationships' => $this->getRelationships([
                 'roles' => new RoleCollection($this->whenLoaded('roles')),
             ]),
+            'meta' => $this->getMeta(),
         ];
+    }
+
+    protected function getMeta(): array|MissingValue
+    {
+        $result = [];
+
+        if ($this->abilities) {
+            $result['abilities'] = $this->abilities;
+        }
+
+        return $result ?: new MissingValue();
     }
 }
