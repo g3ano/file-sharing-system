@@ -162,20 +162,19 @@ class WorkspaceService extends BaseService
     {
         $query = Workspace::query()
             ->with($includes)
-            ->select('workspaces.*')
-            ->join('role_user', 'workspaces.id', 'role_user.workspace_id')
-            ->groupBy('workspaces.id');
+            ->select('workspaces.*');
 
         if ($user->canDo([
             [RoleEnum::ADMIN],
             [RoleEnum::MANAGER],
             [RoleEnum::VIEWER],
         ])) {
-            return $query
-                ->paginate(perPage: $limit, page: $page);
+            return $query->paginate(perPage: $limit, page: $page);
         }
 
         return $query
+            ->join('role_user', 'workspaces.id', 'role_user.workspace_id')
+            ->groupBy('workspaces.id')
             ->where('role_user.user_id', $user->id)
             ->whereNotNull('role_user.workspace_id')
             ->paginate(perPage: $limit, page: $page);
