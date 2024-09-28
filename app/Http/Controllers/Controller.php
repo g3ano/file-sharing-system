@@ -2,16 +2,17 @@
 
 namespace App\Http\Controllers;
 
-use App\Helpers\HasResponse;
-use App\Helpers\Relatable;
 use App\Helpers\Slugable;
+use App\Helpers\Relatable;
+use App\Helpers\HasResponse;
+use App\Helpers\HasPaginatorMeta;
+use App\Helpers\Orderable;
 
 abstract class Controller
 {
     use HasResponse;
     use Relatable;
     use Slugable;
-
-    public $limit = 10;
-    public $page = 1;
+    use HasPaginatorMeta;
+    use Orderable;
 }
