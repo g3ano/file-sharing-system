@@ -28,7 +28,7 @@ class RegisterUserRequest extends BaseRequest
             'first_name' => ['bail', 'required', 'string', 'max:255'],
             'last_name' => ['bail', 'required', 'string', 'max:255'],
             'email' => [
-                'bail', 'required', 'string', 'lowercase', 'email', 'max:255', Rule::unique(User::class, 'email'),
+                'bail', 'required', 'string', 'lowercase', 'email:rfc,dns', 'max:255', Rule::unique(User::class, 'email'),
             ],
             'password' => ['bail', 'required', 'confirmed', Password::defaults()],
         ];
