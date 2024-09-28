@@ -26,7 +26,7 @@ class UserResource extends BaseResource
                 'email' => $this->includeEmail ?? null
                     ? $this->email
                     : null,
-                'createdAt' => $this->created_at,
+                'createdAt' => date('Y-m-d', strtotime($this->created_at)),
             ]),
             'relationships' => $this->getRelationships([
                 'roles' => new RoleCollection($this->whenLoaded('roles')),

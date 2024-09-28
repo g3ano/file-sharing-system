@@ -18,6 +18,7 @@ Route::prefix('users')
                 Route::get('/@me', 'getAuthUser');
                 Route::get('/list', 'getUserList');
                 Route::get('/list/deleted', 'getDeletedUserList');
+                Route::get('/list/count', 'getUserListCount');
 
                 Route::get('/id/{userID}', 'getUserByID');
                 Route::get('/slug/{userSlug}', 'getUserBySlug');

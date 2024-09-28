@@ -12,16 +12,6 @@ use Illuminate\Support\Facades\DB;
 class UserService
 {
     /**
-     * Get users list depending on authenticated user role.
-     */
-    public function getUserListByRole(User $user, int $page = 1, int $limit = 10, string $orderBy = 'created_at')
-    {
-        return $this->getUserListQueryBuilder($user)
-            ->orderBy($orderBy, 'desc')
-            ->paginate(perPage: $limit, page: $page);
-    }
-
-    /**
      * Builds proper query to constrain user list depending on authenticated
      * user role.
      */
@@ -63,7 +53,7 @@ class UserService
         return $query ?: User::query()->whereRaw('1 = 0');
     }
 
-    public function searchForUsers(User $user, string $searchValue, int $page = 1, int $limit = 10)
+    public function searchForUsers(User $user, string $searchValue, int $page = 1, int $limit = 10, string $orderBy = 'created_at', string $orderByDir = 'asc')
     {
         $searchValue = "%{$searchValue}%";
 
@@ -74,7 +64,33 @@ class UserService
                 'email',
                 'username',
             ], 'ILIKE', $searchValue)
+            ->orderBy($orderBy, $orderByDir)
             ->paginate(perPage: $limit, page: $page);
+    }
+
+    /**
+     * Gets authenticated user abilities to a target user.
+     */
+    public function getAuthUserAbilitiesTo(?User &$target = null, ?User $auth = null)
+    {
+        if (!$target || !$auth) {
+            return;
+        }
+
+        $abilities = [
+            'canUserBeViewed' => $auth->can('viewUser', [
+                User::class, $target,
+            ]),
+            'canUserBeDelete' => $auth->id !== $target->id && $auth->can('deleteUser', [
+                User::class, $target,
+            ]),
+            'canUserPermissionsBeUpdated' => $auth->canDo([
+                [RoleEnum::ADMIN],
+                [RoleEnum::MANAGER],
+            ]) || $auth->isAnyWorkspaceManager() || $auth->isAnyProjectManager(),
+        ];
+
+        $target->abilities = $abilities;
     }
 
     /**
