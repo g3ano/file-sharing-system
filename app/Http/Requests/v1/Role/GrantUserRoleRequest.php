@@ -2,9 +2,10 @@
 
 namespace App\Http\Requests\v1\Role;
 
-use App\Http\Requests\BaseRequest;
 use App\Models\Role;
+use App\Models\User;
 use Illuminate\Validation\Rule;
+use App\Http\Requests\BaseRequest;
 
 class GrantUserRoleRequest extends BaseRequest
 {
@@ -24,6 +25,9 @@ class GrantUserRoleRequest extends BaseRequest
     public function rules(): array
     {
         return [
+            'user_id' => [
+                'bail', 'required', 'numeric', Rule::exists(User::class, 'id'),
+            ],
             'role_id' => [
                 'bail', 'required', 'numeric', Rule::in(Role::$validGlobalRoles),
             ],
