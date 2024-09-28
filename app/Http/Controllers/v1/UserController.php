@@ -10,17 +10,27 @@ use Illuminate\Support\Facades\Auth;
 use App\Http\Resources\v1\UserResource;
 use App\Http\Resources\v1\UserCollection;
 use App\Services\UserService;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Log;
 
 class UserController extends Controller
 {
-    protected $relationships;
     protected $userService;
+    protected $relationships;
+    protected array $orderable;
+    protected array $orderableMap;
 
     public function __construct(UserService $userService)
     {
         $this->userService = $userService;
         $this->relationships = [];
+        $this->orderable = [
+            'id', 'createdAt', 'firstName',
+        ];
+        $this->orderableMap = [
+            'createdAt' => 'created_at',
+            'firstName' => 'first_name',
+        ];
     }
 
     /**
@@ -29,7 +39,6 @@ class UserController extends Controller
     public function getAuthUser()
     {
         $auth = User::user();
-        $auth->includeEmail = true;
         $auth->abilities = [
             'canViewAllUsers' => $auth->canDo([
                 [RoleEnum::ADMIN],
@@ -38,6 +47,7 @@ class UserController extends Controller
             ]),
             'canViewWorkspaceMembers' => $auth->isAnyWorkspaceManager(),
             'canViewProjectMembers' => $auth->isAnyProjectManager(),
+            'canCreateUser' => $auth->can('createUser', User::class),
         ];
 
         return new UserResource($auth);
@@ -65,7 +75,7 @@ class UserController extends Controller
     /**
      * Get user by slug.
      */
-    public function getUserBySlug(Request $request, string $userSlug)
+    public function getUserBySlug(string $userSlug)
     {
         if ($userSlug === '@me') {
             return $this->getAuthUser();
@@ -106,12 +116,48 @@ class UserController extends Controller
             $this->failedWithMessage(__('user.not_found'), 404);
         }
 
-        $limit = $request->query('limit') ?? $this->limit;
-        $page = $request->query('page') ?? $this->page;
+        $isSearchQuery = (bool) ($request->query('searchValue') ?? '');
 
-        $users = $this->userService->getUserListByRole($auth, page: $page, limit: $limit);
+        if ($isSearchQuery) {
+            return $this->searchUserList($request);
+        }
+
+        [$page, $limit] = $this->getPaginatorMetadata($request);
+        [$orderBy, $orderByDir] = $this->getOrderByMeta($request);
+
+        /**
+         * @var LengthAwarePaginator
+         */
+        $users = $this->userService->getUserListQueryBuilder($auth)
+            ->orderBy($orderBy, $orderByDir)
+            ->paginate(perPage: $limit, page: $page);
+
+        $users->through(function ($item) use ($auth) {
+            $item->includeEmail = true;
+            $this->userService->getAuthUserAbilitiesTo(auth: $auth, target: $item);
+            return $item;
+        });
 
         return new UserCollection($users);
+    }
+
+    /**
+     * Get users count.
+     */
+    public function getUserListCount()
+    {
+        $auth = User::user();
+
+        if (!$auth || !$auth->can('viewAnyUser', User::class)) {
+            $this->failedWithMessage(__('user.not_found'), 404);
+        }
+
+        $count = $this->userService->getUserListQueryBuilder($auth)
+            ->count();
+
+        return $this->succeed([
+            'data' => $count,
+        ], 200, false);
     }
 
     /**
@@ -128,10 +174,19 @@ class UserController extends Controller
         $limit = $request->query('limit') ?? $this->limit;
         $page = $request->query('page') ?? $this->page;
 
+        /**
+         * @var LengthAwarePaginator
+         */
         $users = User::query()
             ->onlyTrashed()
             ->orderBy('created_at', 'desc')
             ->paginate(perPage: $limit, page: $page);
+
+        $users->through(function ($item) use ($auth) {
+            $item->includeEmail = true;
+            $this->userService->getAuthUserAbilitiesTo(auth: $auth, target: $item);
+            return $item;
+        });
 
         return new UserCollection($users);
     }
@@ -171,14 +226,25 @@ class UserController extends Controller
         }
 
         $auth = User::user();
-        $limit = $request->query('limit') ?? $this->limit;
-        $page = $request->query('page') ?? $this->page;
+
+        [$page, $limit] = $this->getPaginatorMetadata($request);
+        [$orderBy, $orderByDir] = $this->getOrderByMeta($request);
 
         if (!$auth) {
             $this->failedAsNotFound('user');
         }
 
-        $users = $this->userService->searchForUsers($auth, $searchValue, $page, $limit);
+        /**
+         * @var LengthAwarePaginator
+         */
+        $users = $this->userService->searchForUsers($auth, $searchValue, $page, $limit, $orderBy, $orderByDir);
+
+        $users->through(function ($item) use ($auth) {
+            $item->includeEmail = true;
+            $this->userService->getAuthUserAbilitiesTo(auth: $auth, target: $item);
+
+            return $item;
+        });
 
         return new UserCollection($users);
     }
