@@ -7,6 +7,7 @@ use App\Enums\RoleEnum;
 use App\Models\Role;
 use App\Models\RoleUser;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use RuntimeException;
 use Throwable;
 use TypeError;
@@ -65,13 +66,13 @@ class RoleService extends BaseService
      * @throws RuntimeException
      * @throws TypeError
      */
-    public function grantUserRole(User $user, array $data)
+    public function grantUserRole(User $user, array $data, RoleService $roleService)
     {
         $context = $data['context'];
         $data = $this->prepareRoleDataForDB($user->id, $data);
 
         $this->isUserRoleExists($data['search']);
-        $this->resetUserRolesInContext([$user->id], $context);
+        $this->resetUserRolesInContext($roleService, [$user->id], $context);
 
         $user->roles()->attach($data['roleID'], $data['data']);
     }
@@ -181,10 +182,32 @@ class RoleService extends BaseService
     /**
      * Resets users roles within context.
      */
-    public function resetUserRolesInContext(array $users = [], ?array $context = null): int
+    public function resetUserRolesInContext(RoleService $roleService, array $users = [], ?array $context = null): ?int
     {
         if (empty($users) || !array_is_list($users) || !empty($context) && !array_is_list($context)) {
-            return 0;
+            return null;
+        }
+
+        [$resource, $resourceID] = $context ?? [null, null];
+
+        if (is_array($resourceID)) {
+            if (!array_is_list($resourceID)) {
+                return null;
+            }
+
+            $resource = !($resource instanceof ResourceEnum)
+                ? ResourceEnum::fromName($resource)
+                : $resource;
+
+            DB::transaction(function () use ($resourceID, $roleService, $users, $resource) {
+                return RoleUser::query()
+                    ->whereIn(
+                        $roleService->getResourceProperFieldName($resource),
+                        $resourceID
+                    )
+                    ->whereIn('user_id', $users)
+                    ->delete();
+            });
         }
 
         $resourceMatchingData = $this->prepareResourceSearchData(context: $context);

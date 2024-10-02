@@ -39,6 +39,7 @@ class UserController extends Controller
     public function getAuthUser()
     {
         $auth = User::user();
+        $auth->includeEmail = true;
         $auth->abilities = [
             'canViewAllUsers' => $auth->canDo([
                 [RoleEnum::ADMIN],

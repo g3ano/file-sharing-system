@@ -13,7 +13,7 @@ Route::prefix('roles')
 
             Route::get('/user/@me', 'getAuthUserRoles');
             Route::get('/user/check/@me', 'getAuthUserIsRole');
-            Route::get('/user/{userID}', 'getUserRoles');
+            Route::get('/user/{userID}', 'getUserRolesByID');
             Route::get('/user/check/{userID}', 'getUserIsRole');
         });
     });

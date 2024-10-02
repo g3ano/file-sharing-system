@@ -37,12 +37,21 @@ class RolePolicy
         return false;
     }
 
-    public function grantUserWorkspaceRole(User $user, Workspace $workspace, User $target): bool
+    public function grantUserWorkspaceRole(User $user, Workspace $workspace, User $target, string|int $roleID): bool
     {
         $workspaceService = (new WorkspaceService());
 
         if (
             !$workspaceService->userIsWorkspaceMember($target, $workspace)
+        ) {
+            return false;
+        }
+
+        if (
+            (int) $roleID === RoleEnum::MANAGER->value &&
+            !$user->canDo([
+                [RoleEnum::MANAGER],
+            ])
         ) {
             return false;
         }

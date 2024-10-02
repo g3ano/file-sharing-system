@@ -43,7 +43,7 @@ class RoleController extends Controller
         return new RoleCollection($roles);
     }
 
-    public function getUserRoles(Request $request, string $userID)
+    public function getUserRolesByID(Request $request, string $userID)
     {
         $auth = User::user();
         $user = User::query()->where('id', $userID)->first();
@@ -125,7 +125,7 @@ class RoleController extends Controller
         }
 
         try {
-            $this->roleService->grantUserRole($user, $data);
+            $this->roleService->grantUserRole($user, $data, $this->roleService);
         } catch (Throwable $e) {
             $this->failed(
                 $this->parseExceptionError($e),
@@ -154,7 +154,7 @@ class RoleController extends Controller
         }
 
         try {
-            $this->roleService->grantUserRole($user, $data);
+            $this->roleService->grantUserRole($user, $data, $this->roleService);
         } catch (Throwable $e) {
             $this->failed(
                 $this->parseExceptionError($e),
@@ -183,7 +183,7 @@ class RoleController extends Controller
         }
 
         try {
-            $this->roleService->grantUserRole($user, $data);
+            $this->roleService->grantUserRole($user, $data, $this->roleService);
         } catch (Throwable $e) {
             $this->failed(
                 $this->parseExceptionError($e),

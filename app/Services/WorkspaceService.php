@@ -8,6 +8,7 @@ use RuntimeException;
 use App\Models\Workspace;
 use App\Enums\ResourceEnum;
 use App\Enums\RoleEnum;
+use App\Models\Role;
 use App\Models\RoleUser;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -51,7 +52,7 @@ class WorkspaceService extends BaseService
      * @throws RuntimeException
      * @throws Throwable
      */
-    public function addWorkspaceMembers(Workspace $workspace, array $data)
+    public function addWorkspaceMembers(Workspace $workspace, array $data, RoleService $roleService)
     {
         [
             'members' => $members,
@@ -66,8 +67,46 @@ class WorkspaceService extends BaseService
 
             $workspace->members()->attach($members);
 
-            $this->syncWorkspaceMemberRolesAfterRemoval($workspace, $members);
-            $this->syncWorkspaceMemberRolesAfterAddition($workspace, $members);
+            $this->syncWorkspacesMemberRolesAfterRemoval($roleService, $workspace, $members);
+            $this->syncWorkspacesMemberRolesAfterAddition($roleService, $workspace, $members);
+
+            DB::commit();
+        } catch (Throwable $e) {
+            DB::rollBack();
+
+            $this->failedAtRuntime($e->getMessage(), $e->getCode());
+        }
+    }
+
+    /**
+     * @throws RuntimeException
+     * @throws Throwable
+     */
+    public function AddUserToWorkspaces(User $user, array $data, RoleService $roleService)
+    {
+        [
+            'workspaces' => $workspaces,
+        ] = $data;
+
+        if (!array_is_list($workspaces)) {
+            $this->failedAtRuntime(__('workspace.members.workspaces'), 422);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $user->workspaces()->attach($workspaces);
+
+            $this->syncWorkspacesMemberRolesAfterRemoval(
+                $roleService,
+                $workspaces,
+                [$user->id],
+            );
+            $this->syncWorkspacesMemberRolesAfterAddition(
+                $roleService,
+                $workspaces,
+                [$user->id],
+            );
 
             DB::commit();
         } catch (Throwable $e) {
@@ -80,7 +119,7 @@ class WorkspaceService extends BaseService
     /**
      * @throws RuntimeException
      */
-    public function removeWorkspaceMembers(Workspace $workspace, array $data)
+    public function removeWorkspaceMembers(Workspace $workspace, array $data, RoleService $roleService)
     {
         [
             'members' => $members,
@@ -95,7 +134,7 @@ class WorkspaceService extends BaseService
 
             $workspace->members()->detach($members);
 
-            $this->syncWorkspaceMemberRolesAfterRemoval($workspace, $members);
+            $this->syncWorkspacesMemberRolesAfterRemoval($roleService, $workspace, $members);
 
             DB::commit();
         } catch (Throwable $e) {
@@ -105,25 +144,33 @@ class WorkspaceService extends BaseService
         }
     }
 
-    public function syncWorkspaceMemberRolesAfterRemoval(Workspace $workspace, array $members, RoleService $roleService = new RoleService()): ?int
+    public function syncWorkspacesMemberRolesAfterRemoval(RoleService $roleService, Workspace|array $workspace, array $members): ?int
     {
         if (empty($members) || !array_is_list($members)) {
             return null;
         }
 
-        return $roleService->resetUserRolesInContext($members, [
-            ResourceEnum::WORKSPACE, $workspace->id,
-        ]);
+        $context = [
+            ResourceEnum::WORKSPACE,
+            $workspace instanceof Workspace ? $workspace->id : $workspace,
+        ];
+
+        return $roleService->resetUserRolesInContext($roleService, $members, $context);
     }
 
-    public function syncWorkspaceMemberRolesAfterAddition(Workspace $workspace, array $members, RoleService $roleService = new RoleService()): bool
+    public function syncWorkspacesMemberRolesAfterAddition(RoleService $roleService, Workspace|array $workspace, array $members): bool
     {
         if (empty($members) || !array_is_list($members)) {
             return null;
         }
 
-        $context = [ResourceEnum::WORKSPACE, $workspace->id];
-        $data = $roleService->prepareResourceInsertData($context, RoleEnum::VIEWER->value, $members);
+        $workspace = is_array($workspace) ? $workspace : [$workspace->id];
+        $data = [];
+
+        foreach ($workspace as $workspaceID) {
+            $context = [ResourceEnum::WORKSPACE, $workspaceID];
+            $data[] = $roleService->prepareResourceInsertData($context, RoleEnum::VIEWER->value, $members);
+        }
 
         return RoleUser::query()->insert($data);
     }
@@ -158,11 +205,18 @@ class WorkspaceService extends BaseService
     /**
      * Get list of workspace depending on user role.
      */
-    public function getWorkspaceListByRole(User $user, array $includes, int $page, int $limit)
+    public function getWorkspaceListByRole(User $user, string|int $page, string|int $limit, ?string $searchValue = null, array $includes = [])
     {
         $query = Workspace::query()
             ->with($includes)
             ->select('workspaces.*');
+
+        if ($searchValue) {
+            $searchValue = "%$searchValue%";
+            $query = $query->whereAny([
+                'name', 'description',
+            ], 'ILIKE', $searchValue);
+        }
 
         if ($user->canDo([
             [RoleEnum::ADMIN],

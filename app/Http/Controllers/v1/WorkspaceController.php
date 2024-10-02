@@ -9,11 +9,13 @@ use Illuminate\Http\Request;
 use App\Services\WorkspaceService;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\v1\Workspace\AddUserToWorkspaces;
 use App\Http\Resources\v1\UserCollection;
 use App\Http\Resources\v1\WorkspaceCollection;
 use App\Http\Requests\v1\Workspace\CreateWorkspaceRequest;
 use App\Http\Requests\v1\Workspace\AddWorkspaceMembersRequest;
 use App\Http\Requests\v1\Workspace\RemoveWorkspaceMembersRequest;
+use App\Services\RoleService;
 
 class WorkspaceController extends Controller
 {
@@ -54,6 +56,7 @@ class WorkspaceController extends Controller
     {
         $page = $request->get('page') ?? $this->page;
         $limit = $request->get('limit') ?? $this->limit;
+        $searchValue = $request->query('searchValue') ?? 'a';
         $includes = $this->getIncludedRelationships($request);
 
         $auth = User::user();
@@ -62,7 +65,7 @@ class WorkspaceController extends Controller
             $this->failedAsNotFound('workspace');
         }
 
-        $workspaces = $this->workspaceService->getWorkspaceListByRole($auth, $includes, $page, $limit);
+        $workspaces = $this->workspaceService->getWorkspaceListByRole($auth, includes: $includes, page: $page, limit: $limit, searchValue: $searchValue);
 
         return new WorkspaceCollection($workspaces);
     }
@@ -70,14 +73,14 @@ class WorkspaceController extends Controller
     /**
      * Adds members from workspace.
      */
-    public function addWorkspaceMembers(AddWorkspaceMembersRequest $request, string $workspaceID)
+    public function addWorkspaceMembers(AddWorkspaceMembersRequest $request, string $workspaceID, RoleService $roleService)
     {
         $workspace = Workspace::query()
             ->where('id', $workspaceID)
             ->first();
         $auth = User::user();
 
-        if (!$workspace || !$auth || !$auth->can('addWorkspaceMembers', [
+        if (!$workspace || !$auth->can('addWorkspaceMembers', [
             Workspace::class, $workspace,
         ])) {
             $this->failedAsNotFound('workspace');
@@ -86,7 +89,30 @@ class WorkspaceController extends Controller
         $members = $request->validated();
 
         try {
-            $this->workspaceService->addWorkspaceMembers($workspace, $members);
+            $this->workspaceService->addWorkspaceMembers($workspace, $members, $roleService);
+        } catch (Throwable $e) {
+            $this->failed(
+                $this->parseExceptionError($e),
+                $this->parseExceptionCode($e),
+            );
+        }
+
+        return $this->succeedWithStatus();
+    }
+
+    public function addUserToWorkspaces(AddUserToWorkspaces $request, string $userID, RoleService $roleService)
+    {
+        $auth = User::user();
+        $user = User::query()->where('id', $userID)->first();
+
+        if (!$user || !$auth->can('addUserToWorkspaces', Workspace::class)) {
+            $this->failedAsNotFound('user');
+        }
+
+        $data = $request->validated();
+
+        try {
+            $this->workspaceService->AddUserToWorkspaces($user, $data, $roleService);
         } catch (Throwable $e) {
             $this->failed(
                 $this->parseExceptionError($e),
@@ -100,7 +126,7 @@ class WorkspaceController extends Controller
     /**
      * Removes members from workspace.
      */
-    public function removeWorkspaceMembers(RemoveWorkspaceMembersRequest $request, string $workspaceID)
+    public function removeWorkspaceMembers(RemoveWorkspaceMembersRequest $request, string $workspaceID, RoleService $roleService)
     {
         $workspace = Workspace::query()
             ->where('id', $workspaceID)
@@ -116,7 +142,7 @@ class WorkspaceController extends Controller
         $members = $request->validated();
 
         try {
-            $this->workspaceService->removeWorkspaceMembers($workspace, $members);
+            $this->workspaceService->removeWorkspaceMembers($workspace, $members, $roleService);
         } catch (Throwable $e) {
             Log::error('Error removing workspace members: ' . $e->getMessage(), [
                 'workspace_id' => $workspace->id,
@@ -159,7 +185,7 @@ class WorkspaceController extends Controller
     }
 
     /**
-     * Gets user joined workspaces.
+     * Gets user joined workspaces using user ID.
      */
     public function getUserJoinedWorkspaceListByID(Request $request, string $userID)
     {
@@ -175,7 +201,7 @@ class WorkspaceController extends Controller
     }
 
     /**
-     * Gets user joined workspaces.
+     * Gets user joined workspaces using user slug.
      */
     public function getUserJoinedWorkspaceListBySlug(Request $request, string $userSlug)
     {

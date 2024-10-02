@@ -9,10 +9,11 @@ Route::prefix('workspaces')
         Route::post('/new', 'createWorkspace');
         Route::get('/list', 'getWorkspaceList');
 
+        Route::get('/user/id/{userID}', 'getUserJoinedWorkspaceListByID');
+        Route::get('/user/slug/{userSlug}', 'getUserJoinedWorkspaceListBySlug');
+        Route::post('/user/add/{userID}', 'addUserToWorkspaces');
+
         Route::post('/{workspaceID}/members/new', 'addWorkspaceMembers');
         Route::post('/{workspaceID}/members/remove', 'removeWorkspaceMembers');
         Route::get('/{workspaceID}/members/list', 'getWorkspaceMembers');
-
-        Route::get('/user/id/{userID}', 'getUserJoinedWorkspaceListByID');
-        Route::get('/user/slug/{userSlug}', 'getUserJoinedWorkspaceListBySlug');
     });

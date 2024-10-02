@@ -28,15 +28,15 @@ class GrantUserWorkspaceRoleRequest extends BaseRequest
     public function rules(): array
     {
         return [
+            'context' => [
+                'bail', 'array', 'required', 'present', 'min:2', 'max:2',
+            ],
             'user_id' => [
                 'bail', 'required', 'numeric', Rule::exists(User::class, 'id'),
                 new UserIsWorkspaceMember(),
             ],
             'role_id' => [
                 'bail', 'required', 'numeric', Rule::exists(Role::class, 'id')->whereIn('id', Workspace::$validRoles), new ConstrainManagerRoleResource(),
-            ],
-            'context' => [
-                'bail', 'array', 'nullable', 'present', 'min:2', 'max:2',
             ],
         ];
     }

@@ -87,6 +87,21 @@ class WorkspacePolicy
     }
 
     /**
+     * Determine if user can add another user to list of workspaces.
+     */
+    public function addUserToWorkspaces(User $user): bool
+    {
+        if ($user->canDo([
+            [RoleEnum::ADMIN],
+            [RoleEnum::MANAGER],
+        ])) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Determine if user can remove members from workspace.
      */
     public function removeWorkspaceMembers(User $user, Workspace $workspace): bool

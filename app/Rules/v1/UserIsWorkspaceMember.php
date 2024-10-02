@@ -33,7 +33,7 @@ class UserIsWorkspaceMember implements ValidationRule, DataAwareRule
     {
         [
             $resource, $resourceID,
-        ] = $this->data['context'];
+        ] = $this->data['context'] ?? [null, null];
 
         $userID = $this->data['user_id'];
         $resource = ResourceEnum::fromName($resource);
