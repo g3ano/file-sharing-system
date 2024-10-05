@@ -2,8 +2,10 @@
 
 namespace App\Providers;
 
+use App\Models\Ability;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Auth\Notifications\ResetPassword;
+use Silber\Bouncer\BouncerFacade;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -26,5 +28,8 @@ class AppServiceProvider extends ServiceProvider
         ResetPassword::createUrlUsing(function (object $notifiable, string $token) {
             return config('app.frontend_url') . "/password-reset/$token?email={$notifiable->getEmailForPasswordReset()}";
         });
+
+        // BouncerFacade::cache();
+        BouncerFacade::useAbilityModel(Ability::class);
     }
 }

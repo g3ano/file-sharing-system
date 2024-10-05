@@ -15,14 +15,19 @@ Route::prefix('users')
                     ->name('register');
                 Route::delete('/delete/{userID}', 'deleteUser');
 
-                Route::get('/@me', 'getAuthUser');
+                Route::get('/me', 'getAuthUser');
                 Route::get('/list', 'getUserList');
                 Route::get('/list/deleted', 'getDeletedUserList');
                 Route::get('/list/count', 'getUserListCount');
 
-                Route::get('/id/{userID}', 'getUserByID');
-                Route::get('/slug/{userSlug}', 'getUserBySlug');
+                Route::post('/{userID}/workspaces/add', 'addUserWorkspaces');
+                Route::post('/{userID}/workspaces/remove', 'removeUserWorkspaces');
 
                 Route::get('/search', 'searchUserList');
+
+                Route::get('/{userID}/abilities', 'getUserAbilities');
+                Route::post('/{userID}/abilities/global', 'updateUserGlobalAbilities');
+                Route::post('/{userID}/abilities/{targetUserID}', 'updateUserAbilities');
+                Route::get('/{userID}', 'getUserByID');
             });
     });

@@ -2,23 +2,19 @@
 
 namespace App\Services;
 
-use Throwable;
+use App\Enums\AbilityEnum;
 use App\Models\User;
 use RuntimeException;
 use App\Models\Workspace;
-use App\Enums\ResourceEnum;
-use App\Enums\RoleEnum;
-use App\Models\Role;
-use App\Models\RoleUser;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Silber\Bouncer\BouncerFacade;
 
 class WorkspaceService extends BaseService
 {
     /**
-     * Determine whether a user is member of a workspace.
+     * Determine whether user is member of a workspace.
      */
-    public function userIsWorkspaceMember(User $user, Workspace $workspace): bool
+    public function isUserWorkspaceMember(Workspace $workspace, User $user): bool
     {
         return (bool) $user->workspaces()
             ->wherePivot('workspace_id', $workspace->id)
@@ -26,9 +22,9 @@ class WorkspaceService extends BaseService
     }
 
     /**
-     * Determine whether a user is member of a workspace.
+     * Determine whether user is member of a workspace.
      */
-    public function userIsWorkspaceMemberByID(User $user, int|string $workspaceID): bool
+    public function isUserWorkspaceMemberByID(int|string $workspaceID, User $user): bool
     {
         return (bool) once(function () use ($user, $workspaceID) {
             return $user->workspaces()
@@ -37,175 +33,51 @@ class WorkspaceService extends BaseService
         });
     }
 
+    /**
+     * Creates workspace.
+     */
     public function createWorkspace(User $user, array $data): Workspace
     {
-        return Workspace::query()
-            ->create([
-                'name' => $data['name'],
-                'description' => $data['description'],
-                'slug' => $this->getSlug($data['name']),
-                'user_id' => $user->id,
-            ]);
+        return Workspace::query()->create([
+            'name' => $data['name'],
+            'description' => $data['description'],
+            'slug' => $this->getSlug($data['name']),
+            'user_id' => $user->id,
+        ]);
     }
 
     /**
+     * Adds workspace members.
+     *
      * @throws RuntimeException
-     * @throws Throwable
      */
-    public function addWorkspaceMembers(Workspace $workspace, array $data, RoleService $roleService)
+    public function addWorkspaceMembers(Workspace $workspace, array $members)
     {
-        [
-            'members' => $members,
-        ] = $data;
-
         if (!array_is_list($members)) {
             $this->failedAtRuntime(__('workspace.members.invalid_members_array'), 422);
         }
 
-        try {
-            DB::beginTransaction();
-
-            $workspace->members()->attach($members);
-
-            $this->syncWorkspacesMemberRolesAfterRemoval($roleService, $workspace, $members);
-            $this->syncWorkspacesMemberRolesAfterAddition($roleService, $workspace, $members);
-
-            DB::commit();
-        } catch (Throwable $e) {
-            DB::rollBack();
-
-            $this->failedAtRuntime($e->getMessage(), $e->getCode());
-        }
+        $workspace->members()->attach($members);
     }
 
     /**
-     * @throws RuntimeException
-     * @throws Throwable
-     */
-    public function AddUserToWorkspaces(User $user, array $data, RoleService $roleService)
-    {
-        [
-            'workspaces' => $workspaces,
-        ] = $data;
-
-        if (!array_is_list($workspaces)) {
-            $this->failedAtRuntime(__('workspace.members.workspaces'), 422);
-        }
-
-        try {
-            DB::beginTransaction();
-
-            $user->workspaces()->attach($workspaces);
-
-            $this->syncWorkspacesMemberRolesAfterRemoval(
-                $roleService,
-                $workspaces,
-                [$user->id],
-            );
-            $this->syncWorkspacesMemberRolesAfterAddition(
-                $roleService,
-                $workspaces,
-                [$user->id],
-            );
-
-            DB::commit();
-        } catch (Throwable $e) {
-            DB::rollBack();
-
-            $this->failedAtRuntime($e->getMessage(), $e->getCode());
-        }
-    }
-
-    /**
+     * Removes workspace members.
+     *
      * @throws RuntimeException
      */
-    public function removeWorkspaceMembers(Workspace $workspace, array $data, RoleService $roleService)
+    public function removeWorkspaceMembers(Workspace $workspace, array $members)
     {
-        [
-            'members' => $members,
-        ] = $data;
-
         if (!array_is_list($members)) {
             $this->failedAtRuntime(__('workspace.members.invalid_members_array'), 422);
         }
 
-        try {
-            DB::beginTransaction();
-
-            $workspace->members()->detach($members);
-
-            $this->syncWorkspacesMemberRolesAfterRemoval($roleService, $workspace, $members);
-
-            DB::commit();
-        } catch (Throwable $e) {
-            DB::rollBack();
-
-            $this->failedAtRuntime($e->getMessage(), $e->getCode());
-        }
-    }
-
-    public function syncWorkspacesMemberRolesAfterRemoval(RoleService $roleService, Workspace|array $workspace, array $members): ?int
-    {
-        if (empty($members) || !array_is_list($members)) {
-            return null;
-        }
-
-        $context = [
-            ResourceEnum::WORKSPACE,
-            $workspace instanceof Workspace ? $workspace->id : $workspace,
-        ];
-
-        return $roleService->resetUserRolesInContext($roleService, $members, $context);
-    }
-
-    public function syncWorkspacesMemberRolesAfterAddition(RoleService $roleService, Workspace|array $workspace, array $members): bool
-    {
-        if (empty($members) || !array_is_list($members)) {
-            return null;
-        }
-
-        $workspace = is_array($workspace) ? $workspace : [$workspace->id];
-        $data = [];
-
-        foreach ($workspace as $workspaceID) {
-            $context = [ResourceEnum::WORKSPACE, $workspaceID];
-            $data[] = $roleService->prepareResourceInsertData($context, RoleEnum::VIEWER->value, $members);
-        }
-
-        return RoleUser::query()->insert($data);
+        $workspace->members()->detach($members);
     }
 
     /**
-     * Get user joined workspaces.
+     * Get paginated list of workspaces, list can be searched.
      */
-    public function getUserJoinedWorkspaces(User $auth, User $target, int|string $page = 1, int|string $limit = 10)
-    {
-        //return all target user workspaces.
-        if ($auth->canDo([
-            [RoleEnum::ADMIN],
-            [RoleEnum::MANAGER],
-            [RoleEnum::VIEWER],
-        ])) {
-            return $target->workspaces()->paginate(perPage: $limit, page: $page);
-        }
-
-        //return only shared workspaces between auth and target user.
-        return Workspace::query()
-            ->select('workspaces.*')
-            ->join('user_workspace', 'workspaces.id', '=', 'user_workspace.workspace_id')
-            ->where(function (Builder $query) use ($target, $auth) {
-                $query->where('user_workspace.user_id', $target->id)
-                    ->orWhere('user_workspace.user_id', $auth->id);
-            })
-            ->groupBy('workspaces.id')
-            ->havingRaw('COUNT(DISTINCT user_workspace.user_id) = 2')
-            ->paginate(perPage: $limit, page: $page);
-    }
-
-    /**
-     * Get list of workspace depending on user role.
-     */
-    public function getWorkspaceListByRole(User $user, string|int $page, string|int $limit, ?string $searchValue = null, array $includes = [])
+    public function getWorkspaceList(string|int $page, string|int $limit, ?string $searchValue = null, array $includes = [])
     {
         $query = Workspace::query()
             ->with($includes)
@@ -218,19 +90,115 @@ class WorkspaceService extends BaseService
             ], 'ILIKE', $searchValue);
         }
 
-        if ($user->canDo([
-            [RoleEnum::ADMIN],
-            [RoleEnum::MANAGER],
-            [RoleEnum::VIEWER],
-        ])) {
-            return $query->paginate(perPage: $limit, page: $page);
+        return $query
+            ->orderBy('created_at')
+            ->paginate(perPage: $limit, page: $page);
+    }
+
+    /**
+     * Get user joined workspaces.
+     */
+    public function getUserWorkspaceList(User $user, int $page = 1, int $limit = 10, ?string $searchValue = null, array $includes = [], string $orderBy = 'created_at', string $orderByDirection = 'asc')
+    {
+        $query = $user
+            ->workspaces()
+            ->with($includes);
+
+        if ($searchValue) {
+            $searchValue = "%$searchValue%";
+            $query = $query->whereAny([
+                'name', 'description',
+            ], 'ILIKE', $searchValue);
         }
 
         return $query
-            ->join('role_user', 'workspaces.id', 'role_user.workspace_id')
-            ->groupBy('workspaces.id')
-            ->where('role_user.user_id', $user->id)
-            ->whereNotNull('role_user.workspace_id')
+            ->orderByPivot($orderBy, $orderByDirection)
             ->paginate(perPage: $limit, page: $page);
+    }
+
+    public function getUserCapabilitiesForWorkspace(User $auth, Workspace &$workspace, array $additional = [])
+    {
+        $capabilities = [
+            AbilityEnum::VIEW->value => $auth->can(AbilityEnum::VIEW->value, $workspace),
+            AbilityEnum::UPDATE->value => $auth->can(AbilityEnum::UPDATE->value, $workspace),
+            AbilityEnum::DELETE->value => $auth->can(AbilityEnum::DELETE->value, $workspace),
+            AbilityEnum::RESTORE->value => $auth->can(AbilityEnum::RESTORE->value, $workspace),
+            AbilityEnum::FORCE_DELETE->value => $auth->can(AbilityEnum::FORCE_DELETE->value, $workspace),
+            AbilityEnum::WORKSPACE_MEMBER_LIST->value => $auth->can(AbilityEnum::WORKSPACE_MEMBER_LIST->value, $workspace),
+            AbilityEnum::WORKSPACE_MEMBER_ADD->value => $auth->can(AbilityEnum::WORKSPACE_MEMBER_ADD->value, $workspace),
+            AbilityEnum::WORKSPACE_MEMBER_REMOVE->value => $auth->can(AbilityEnum::WORKSPACE_MEMBER_REMOVE->value, $workspace),
+            AbilityEnum::WORKSPACE_MEMBER_ABILITY_MANAGE->value => $auth->can(AbilityEnum::WORKSPACE_MEMBER_ABILITY_MANAGE->value, $workspace),
+            AbilityEnum::WORKSPACE_PROJECT_ADD->value => $auth->can(AbilityEnum::WORKSPACE_PROJECT_ADD->value, $workspace),
+            AbilityEnum::WORKSPACE_PROJECT_REMOVE->value => $auth->can(AbilityEnum::WORKSPACE_PROJECT_REMOVE->value, $workspace),
+            ...$additional,
+        ];
+
+        $workspace->capabilities = $capabilities;
+    }
+
+    /**
+     * Get user capabilities for workspace members.
+     */
+    public function getUserCapabilitiesForWorkspaceMember(User $auth, User &$member, array $additional = [])
+    {
+        $capabilities = [
+            AbilityEnum::VIEW->value => $auth->can(AbilityEnum::VIEW->value, $member),
+            AbilityEnum::USER_WORKSPACE_REMOVE->value => $auth->can(AbilityEnum::USER_WORKSPACE_REMOVE->value, $member),
+            ...$additional,
+        ];
+
+        $member->capabilities = $capabilities;
+    }
+
+    /**
+     * Writes state data about workspace member related to workspace.
+     */
+    public function getWorkspaceMemberState(Workspace &$workspace, User &$member)
+    {
+        $this->isMemberWorkspaceOwner($workspace, $member);
+    }
+
+    /**
+     * Determine if member is workspace owner.
+     */
+    public function isMemberWorkspaceOwner(Workspace &$workspace, User &$member)
+    {
+        $member->isOwner = $workspace->user_id === $member->id;
+        $workspace->isOwner = $workspace->user_id === $member->id;
+    }
+
+    /**
+     * Get workspace member abilities, with broad abilities included.
+     */
+    public function getWorkspaceMemberAbilities(Workspace $workspace, User $user, int $page = 1, int $limit = 10): LengthAwarePaginator
+    {
+        return $user
+            ->getAbilitiesFor($workspace, broad: true)
+            ->with('abilitable')
+            ->paginate(perPage: $limit, page: $page);
+    }
+
+    /**
+     * Update workspace member abilities.
+     */
+    public function updateWorkspaceMemberAbilities(User $user, Workspace $workspace, array $data = [])
+    {
+        if (empty($data)) {
+            return;
+        }
+
+        [
+            'add' => $abilitiesToAdd,
+            'remove' => $abilitiesToRemove,
+        ] = $data;
+
+        if (empty($abilitiesToAdd) && empty($abilitiesToRemove)) {
+            return;
+        }
+
+        $abilitiesToAdd = array_diff($abilitiesToAdd, $abilitiesToRemove);
+
+        BouncerFacade::allow($user)->to($abilitiesToAdd, $workspace);
+        BouncerFacade::disallow($user)->to($abilitiesToRemove, $workspace);
     }
 }

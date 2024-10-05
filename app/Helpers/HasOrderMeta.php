@@ -4,7 +4,7 @@ namespace App\Helpers;
 
 use Illuminate\Http\Request;
 
-trait Orderable
+trait HasOrderMeta
 {
     private const ORDER_BY_PARAM = 'orderBy';
     private const ORDER_BY_DIR_PARAM = 'orderByDir';

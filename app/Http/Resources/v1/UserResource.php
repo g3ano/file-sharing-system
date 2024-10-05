@@ -26,7 +26,7 @@ class UserResource extends BaseResource
                 'email' => $this->includeEmail ?? null
                     ? $this->email
                     : null,
-                'createdAt' => date('Y-m-d', strtotime($this->created_at)),
+                'createdAt' => $this->created_at,
             ]),
             'relationships' => $this->getRelationships([
                 'roles' => new RoleCollection($this->whenLoaded('roles')),
@@ -38,10 +38,13 @@ class UserResource extends BaseResource
     protected function getMeta(): array|MissingValue
     {
         $result = [];
+        $result['createdAt'] = $this->created_at->format('F j, Y');
 
-        if ($this->abilities) {
-            $result['abilities'] = $this->abilities;
+        if ($this->capabilities) {
+            $result['capabilities'] = $this->capabilities;
         }
+
+        $result['isOwner'] = $this->whenNotNull($this->isOwner);
 
         return $result ?: new MissingValue();
     }

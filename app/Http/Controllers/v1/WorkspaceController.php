@@ -5,17 +5,22 @@ namespace App\Http\Controllers\v1;
 use Throwable;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Enums\AbilityEnum;
 use Illuminate\Http\Request;
 use App\Services\WorkspaceService;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\v1\Workspace\AddUserToWorkspaces;
 use App\Http\Resources\v1\UserCollection;
+use App\Events\WorkspaceMembershipUpdated;
+use App\Http\Resources\v1\WorkspaceResource;
 use App\Http\Resources\v1\WorkspaceCollection;
+use Illuminate\Pagination\LengthAwarePaginator;
+use App\Enums\WorkspaceMembershipUpdatedActionEnum;
 use App\Http\Requests\v1\Workspace\CreateWorkspaceRequest;
 use App\Http\Requests\v1\Workspace\AddWorkspaceMembersRequest;
 use App\Http\Requests\v1\Workspace\RemoveWorkspaceMembersRequest;
-use App\Services\RoleService;
+use App\Http\Requests\v1\Workspace\UpdateWorkspaceMemberAbilitiesRequest;
+use App\Http\Resources\v1\AbilityCollection;
 
 class WorkspaceController extends Controller
 {
@@ -37,7 +42,7 @@ class WorkspaceController extends Controller
     {
         $auth = User::user();
 
-        if (!$auth || !$auth->can('createWorkspace', Workspace::class)) {
+        if (!$auth || !$auth->can(AbilityEnum::CREATE->value, Workspace::class)) {
             $this->failedAsNotFound('workspace');
         }
 
@@ -50,46 +55,119 @@ class WorkspaceController extends Controller
     }
 
     /**
+     * Get workspace data by ID.
+     */
+    public function getWorkspaceByID(Request $request, string $workspaceID)
+    {
+        $includes = $this->getIncludedRelationships($request);
+        $auth = User::user();
+        $workspace = Workspace::query()
+            ->with($includes)
+            ->where('id', $workspaceID)
+            ->first();
+
+        if (!$workspace || !$auth->can(AbilityEnum::VIEW->value, $workspace)) {
+            $this->failedAsNotFound('workspace');
+        }
+
+        $this->workspaceService->getUserCapabilitiesForWorkspace($auth, $workspace);
+
+        return new WorkspaceResource($workspace);
+    }
+
+    /**
      * Get paginated list of workspaces.
      */
     public function getWorkspaceList(Request $request)
     {
         $page = $request->get('page') ?? $this->page;
         $limit = $request->get('limit') ?? $this->limit;
-        $searchValue = $request->query('searchValue') ?? 'a';
+        $searchValue = $request->query('searchValue') ?? '';
         $includes = $this->getIncludedRelationships($request);
 
         $auth = User::user();
 
-        if (!$auth || !$auth->can('viewAnyWorkspace', Workspace::class)) {
+        if (!$auth || !$auth->can(AbilityEnum::LIST->value, Workspace::class)) {
             $this->failedAsNotFound('workspace');
         }
 
-        $workspaces = $this->workspaceService->getWorkspaceListByRole($auth, includes: $includes, page: $page, limit: $limit, searchValue: $searchValue);
+        /**
+         * @var LengthAwarePaginator
+         */
+        $workspaces = $this->workspaceService->getWorkspaceList(
+            $page,
+            $limit,
+            $searchValue,
+            $includes
+        );
+
+        $workspaces = $workspaces->through(function (Workspace $workspace) use ($auth) {
+            $this->workspaceService->getUserCapabilitiesForWorkspace($auth, $workspace);
+            return $workspace;
+        });
 
         return new WorkspaceCollection($workspaces);
     }
 
     /**
-     * Adds members from workspace.
+     * Get paginated list of user workspaces.
      */
-    public function addWorkspaceMembers(AddWorkspaceMembersRequest $request, string $workspaceID, RoleService $roleService)
+    public function getUserWorkspaceList(Request $request, string $userID)
+    {
+        [$page, $limit] = $this->getPaginatorMetadata($request);
+        [$orderBy, $orderByDirection] = $this->getOrderByMeta($request);
+        $includes = $this->getIncludedRelationships($request);
+        $searchValue = $request->query('searchValue') ?? '';
+
+        $auth = User::user();
+        $user = User::query()->where('id', $userID)->first();
+
+        if (!$user || !$auth->can(AbilityEnum::USER_WORKSPACE_LIST->value, $user)) {
+            $this->failedAsNotFound('user');
+        }
+
+        /**
+         * @var LengthAwarePaginator
+         */
+        $workspaces = $this->workspaceService->getUserWorkspaceList(
+            $user,
+            $page,
+            $limit,
+            $searchValue,
+            $includes,
+            $orderBy,
+            $orderByDirection,
+        );
+
+        $workspaces = $workspaces->through(function (Workspace $workspace) use ($auth) {
+            $this->workspaceService->getUserCapabilitiesForWorkspace($auth, $workspace);
+            $this->workspaceService->getWorkspaceMemberState($workspace, $auth);
+            return $workspace;
+        });
+
+        return new WorkspaceCollection($workspaces);
+    }
+
+    /**
+     * Adds members for workspace.
+     */
+    public function addWorkspaceMembers(AddWorkspaceMembersRequest $request, string $workspaceID)
     {
         $workspace = Workspace::query()
             ->where('id', $workspaceID)
             ->first();
         $auth = User::user();
 
-        if (!$workspace || !$auth->can('addWorkspaceMembers', [
-            Workspace::class, $workspace,
-        ])) {
+        if (!$workspace || !$auth->can(AbilityEnum::WORKSPACE_MEMBER_ADD->value, $workspace)) {
             $this->failedAsNotFound('workspace');
         }
 
-        $members = $request->validated();
+        [
+            'members' => $members
+        ] = $request->validated();
 
         try {
-            $this->workspaceService->addWorkspaceMembers($workspace, $members, $roleService);
+            $this->workspaceService->addWorkspaceMembers($workspace, $members);
         } catch (Throwable $e) {
             $this->failed(
                 $this->parseExceptionError($e),
@@ -97,28 +175,7 @@ class WorkspaceController extends Controller
             );
         }
 
-        return $this->succeedWithStatus();
-    }
-
-    public function addUserToWorkspaces(AddUserToWorkspaces $request, string $userID, RoleService $roleService)
-    {
-        $auth = User::user();
-        $user = User::query()->where('id', $userID)->first();
-
-        if (!$user || !$auth->can('addUserToWorkspaces', Workspace::class)) {
-            $this->failedAsNotFound('user');
-        }
-
-        $data = $request->validated();
-
-        try {
-            $this->workspaceService->AddUserToWorkspaces($user, $data, $roleService);
-        } catch (Throwable $e) {
-            $this->failed(
-                $this->parseExceptionError($e),
-                $this->parseExceptionCode($e),
-            );
-        }
+        event(new WorkspaceMembershipUpdated($members, $workspace->id));
 
         return $this->succeedWithStatus();
     }
@@ -126,23 +183,25 @@ class WorkspaceController extends Controller
     /**
      * Removes members from workspace.
      */
-    public function removeWorkspaceMembers(RemoveWorkspaceMembersRequest $request, string $workspaceID, RoleService $roleService)
+    public function removeWorkspaceMembers(RemoveWorkspaceMembersRequest $request, string $workspaceID)
     {
         $workspace = Workspace::query()
             ->where('id', $workspaceID)
             ->first();
         $auth = User::user();
 
-        if (!$workspace || !$auth || !$auth->can('addWorkspaceMembers', [
+        if (!$workspace || !$auth || !$auth->can(AbilityEnum::WORKSPACE_MEMBER_REMOVE->value, [
             Workspace::class, $workspace,
         ])) {
             $this->failedAsNotFound('workspace');
         }
 
-        $members = $request->validated();
+        [
+            'members' => $members,
+        ] = $request->validated();
 
         try {
-            $this->workspaceService->removeWorkspaceMembers($workspace, $members, $roleService);
+            $this->workspaceService->removeWorkspaceMembers($workspace, $members);
         } catch (Throwable $e) {
             Log::error('Error removing workspace members: ' . $e->getMessage(), [
                 'workspace_id' => $workspace->id,
@@ -153,6 +212,12 @@ class WorkspaceController extends Controller
                 $this->parseExceptionCode($e),
             );
         }
+
+        event(new WorkspaceMembershipUpdated(
+            $members,
+            $workspace->id,
+            WorkspaceMembershipUpdatedActionEnum::REMOVE
+        ));
 
         return $this->succeedWithStatus();
     }
@@ -170,49 +235,81 @@ class WorkspaceController extends Controller
             ->first();
         $auth = User::user();
 
-        if (!$workspace || !$auth->can('viewWorkspaceMembers', [
-            Workspace::class, $workspace,
-        ])) {
+        if (!$workspace || !$auth->can(AbilityEnum::WORKSPACE_MEMBER_LIST->value, $workspace)) {
             $this->failedAsNotFound('workspace');
         }
 
+        /**
+         * @var LengthAwarePaginator
+         */
         $members = $workspace
             ->members()
             ->orderByPivot('created_at')
             ->paginate(perPage: $limit, page: $page);
 
+        $members = $members->through(function ($member) use ($auth, $workspace) {
+            $this->workspaceService->getUserCapabilitiesForWorkspaceMember($auth, $member);
+            $this->workspaceService->getWorkspaceMemberState($workspace, $member);
+
+            return $member;
+        });
+
         return new UserCollection($members);
     }
 
     /**
-     * Gets user joined workspaces using user ID.
+     * Get workspace member list of abilities.
      */
-    public function getUserJoinedWorkspaceListByID(Request $request, string $userID)
+    public function getWorkspaceMemberAbilities(Request $request, string $workspaceID, string $userID)
     {
-        $user = User::query()->where('id', $userID)->first();
         $auth = User::user();
+        $user = User::query()->where('id', $userID)->first();
 
-        $page = $request->get('page') ?? $this->page;
-        $limit = $request->get('limit') ?? $this->limit;
+        if (!$auth->can(AbilityEnum::USER_ABILITY_VIEW->value, $user)) {
+            $this->failedAsNotFound('user');
+        }
 
-        $workspaces = $this->workspaceService->getUserJoinedWorkspaces($auth, $user, $page, $limit);
+        $workspace = Workspace::query()->where('id', $workspaceID)->first();
 
-        return new WorkspaceCollection($workspaces);
+        if (!$workspace || !$this->workspaceService->isUserWorkspaceMember($workspace, $user)) {
+            $this->failedWithMessage(__('workspace.members.not_found'), 404);
+        }
+
+        [$page, $limit] = $this->getPaginatorMetadata($request);
+
+        $abilities = $this->workspaceService->getWorkspaceMemberAbilities($workspace, $user, $page, $limit);
+
+        $abilities = $abilities->through(function ($ability) {
+            $this->workspaceService->getUserAbilityContext($ability);
+            return $ability;
+        });
+
+        return new AbilityCollection($abilities);
     }
 
-    /**
-     * Gets user joined workspaces using user slug.
-     */
-    public function getUserJoinedWorkspaceListBySlug(Request $request, string $userSlug)
+    public function updateWorkspaceMemberAbilities(UpdateWorkspaceMemberAbilitiesRequest $request, string $workspaceID, string $userID)
     {
-        $user = User::query()->where('slug', $userSlug)->first();
+        $member = User::query()->where('id', $userID)->first();
+        $workspace = Workspace::query()->where('id', $workspaceID)->first();
+
+        if (!$workspace || !$this->workspaceService->isUserWorkspaceMember($workspace, $member)) {
+            $this->failedWithMessage(__('workspace.members.not_found'), 404);
+        }
+
         $auth = User::user();
 
-        $page = $request->get('page') ?? $this->page;
-        $limit = $request->get('limit') ?? $this->limit;
+        if (
+            !$auth->can(AbilityEnum::WORKSPACE_MEMBER_ABILITY_MANAGE->value, $workspace) ||
+            $member->can('*', '*') &&
+            !$auth->can('*', '*')
+        ) {
+            $this->failedAsNotFound('user');
+        }
 
-        $workspaces = $this->workspaceService->getUserJoinedWorkspaces($auth, $user, $page, $limit);
+        $data = $request->validated();
 
-        return new WorkspaceCollection($workspaces);
+        $this->workspaceService->updateWorkspaceMemberAbilities($member, $workspace, $data);
+
+        return $this->succeedWithStatus();
     }
 }

@@ -10,6 +10,10 @@ trait HasPaginatorMeta
     public $page = 1;
     public $maxLimit = 50;
 
+    /**
+     * Get current request pagination metadata.
+     * format: [page, limit]
+     */
     public function getPaginatorMetadata(Request $request): array
     {
         return [

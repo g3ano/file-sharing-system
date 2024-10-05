@@ -2,62 +2,23 @@
 
 namespace App\Services;
 
-use App\Enums\ResourceEnum;
-use App\Enums\RoleEnum;
 use App\Models\User;
-use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
-use Illuminate\Database\Query\Builder;
-use Illuminate\Support\Facades\DB;
+use App\Models\Project;
+use App\Models\Workspace;
+use App\Enums\AbilityEnum;
+use App\Enums\ResourceEnum;
+use Illuminate\Pagination\LengthAwarePaginator;
+use RuntimeException;
+use Silber\Bouncer\BouncerFacade;
 
-class UserService
+class UserService extends BaseService
 {
-    /**
-     * Builds proper query to constrain user list depending on authenticated
-     * user role.
-     */
-    public function getUserListQueryBuilder(User $user): EloquentBuilder
-    {
-        $query = null;
-
-        //Return all users if user is one of following roles
-        if ($user->canDo([
-            [RoleEnum::ADMIN],
-            [RoleEnum::MANAGER],
-            [RoleEnum::VIEWER],
-        ])) {
-            return User::query();
-        }
-
-        //Else if user is a manager of any workspace
-        //return users that are members of any of those workspaces
-        //that are managed by him
-        if ($user->isAnyWorkspaceManager()) {
-            $workspaceUsers = $this->getUsersManagerBy($user, ResourceEnum::WORKSPACE);
-            $query = User::query()->whereIn('id', $workspaceUsers);
-        }
-
-        //Else if user is a manager of any project
-        //return users that are members of any of those projects
-        //that are managed by him
-        if ($user->isAnyProjectManager()) {
-            $projectUsers = $this->getUsersManagerBy($user, ResourceEnum::PROJECT);
-
-            $query = $query
-                ? $query
-                    ->orWhereIn('id', $projectUsers)
-                    ->distinct()
-                : User::query()->whereIn('id', $projectUsers);
-        }
-
-        //Finally, return the query or an empty query
-        return $query ?: User::query()->whereRaw('1 = 0');
-    }
-
-    public function searchForUsers(User $user, string $searchValue, int $page = 1, int $limit = 10, string $orderBy = 'created_at', string $orderByDir = 'asc')
+    public function searchForUsers(string $searchValue, int $page = 1, int $limit = 10, string $orderBy = 'created_at', string $orderByDir = 'asc', array $includes = [])
     {
         $searchValue = "%{$searchValue}%";
 
-        return $this->getUserListQueryBuilder($user)
+        return User::query()
+            ->with($includes)
             ->whereAny([
                 'first_name',
                 'last_name',
@@ -69,63 +30,244 @@ class UserService
     }
 
     /**
-     * Gets authenticated user abilities to a target user.
+     * Gets authenticated user capabilities to a target user.
      */
-    public function getAuthUserAbilitiesTo(?User &$target = null, ?User $auth = null)
+    public function getUserCapabilitiesForUser(?User $auth = null, ?User &$target = null, bool $isAuth = false)
     {
         if (!$target || !$auth) {
             return;
         }
 
-        $abilities = [
-            'canUserBeViewed' => $auth->can('viewUser', [
-                User::class, $target,
-            ]),
-            'canUserBeDelete' => $auth->id !== $target->id && $auth->can('deleteUser', [
-                User::class, $target,
-            ]),
-            'canUserPermissionsBeUpdated' => $auth->canDo([
-                [RoleEnum::ADMIN],
-                [RoleEnum::MANAGER],
-            ]) || $auth->isAnyWorkspaceManager() || $auth->isAnyProjectManager(),
-        ];
+        $capabilities = [];
 
-        $target->abilities = $abilities;
+        if ($isAuth) {
+            $capabilities = [
+                'users list' => $auth->can(AbilityEnum::LIST->value, User::class),
+                'users create' => $auth->can(AbilityEnum::CREATE->value, User::class),
+                'workspaces list' => $auth->can(AbilityEnum::LIST->value, Workspace::class),
+                'workspaces create' => $auth->can(AbilityEnum::CREATE->value, Workspace::class),
+                'projects list' => $auth->can(AbilityEnum::LIST->value, Project::class),
+                'projects list' => $auth->can(AbilityEnum::CREATE->value, Project::class),
+            ];
+        } else {
+            $capabilities = [
+                AbilityEnum::VIEW->value => $auth->can(AbilityEnum::VIEW->value, $target),
+                AbilityEnum::UPDATE->value => $auth->can(AbilityEnum::UPDATE->value, $target),
+                AbilityEnum::DELETE->value => $auth->can(AbilityEnum::DELETE->value, $target),
+                AbilityEnum::RESTORE->value => $auth->can(AbilityEnum::RESTORE->value, $target),
+                AbilityEnum::FORCE_DELETE->value => $auth->can(AbilityEnum::FORCE_DELETE->value, $target),
+                AbilityEnum::USER_ABILITY_VIEW->value => $auth->can(AbilityEnum::USER_ABILITY_VIEW->value, $target),
+                AbilityEnum::USER_ABILITY_MANAGE->value => $auth->can(AbilityEnum::USER_ABILITY_MANAGE->value, $target) && !$target->can('*', '*') || $target->can('*', '*') && $auth->can('*', '*'),
+                AbilityEnum::USER_WORKSPACE_LIST->value => $auth->can(AbilityEnum::USER_WORKSPACE_LIST->value, $target),
+                AbilityEnum::USER_WORKSPACE_ADD->value => $auth->can(AbilityEnum::USER_WORKSPACE_ADD->value, $target),
+                AbilityEnum::USER_WORKSPACE_REMOVE->value => $auth->can(AbilityEnum::USER_WORKSPACE_REMOVE->value, $target),
+                AbilityEnum::USER_PROJECT_LIST->value => $auth->can(AbilityEnum::USER_PROJECT_LIST->value, $target),
+                AbilityEnum::USER_PROJECT_ADD->value => $auth->can(AbilityEnum::USER_PROJECT_ADD->value, $target),
+                AbilityEnum::USER_PROJECT_REMOVE->value => $auth->can(AbilityEnum::USER_PROJECT_REMOVE->value, $target),
+            ];
+        }
+
+        $target->capabilities = $capabilities;
     }
 
     /**
-     * Get builder query that get users related to user through a resource.
+     * Assign proper abilities to newly registered user.
      */
-    protected function getUsersManagerBy(User $user, ResourceEnum $resource): ?Builder
+    public function assignRegisteredUserAbilities(User $registeredUser, string|array $additional = [])
     {
-        switch ($resource) {
-            case ResourceEnum::WORKSPACE:
-                $table = 'user_workspace';
-                $column = 'workspace_id';
-                break;
-            case ResourceEnum::PROJECT:
-                $table = 'project_user';
-                $column = 'project_id';
-                break;
+        $additional = (array) $additional;
 
-            default:
-                $table = null;
-                $column = null;
-                break;
+        BouncerFacade::allow($registeredUser)->to([
+            AbilityEnum::VIEW->value,
+            AbilityEnum::UPDATE->value,
+            AbilityEnum::DELETE->value,
+
+            AbilityEnum::USER_ABILITY_VIEW->value,
+            AbilityEnum::USER_WORKSPACE_LIST->value,
+            AbilityEnum::USER_PROJECT_LIST->value,
+            ...$additional,
+        ], $registeredUser);
+        BouncerFacade::allow($registeredUser)->to([
+            AbilityEnum::VIEW->value,
+
+            AbilityEnum::USER_ABILITY_VIEW->value,
+            ...$additional,
+        ], User::class);
+    }
+
+    /**
+     * Gets paginated list of users.
+     */
+    public function getUserList(int $page = 1, int $limit = 10, string $orderBy = 'created_at', string $orderByDirection = 'asc'): LengthAwarePaginator
+    {
+        return User::query()
+            ->orderBy($orderBy, $orderByDirection)
+            ->paginate(perPage: $limit, page: $page);
+    }
+
+    /**
+     * Gets paginated list of deleted users.
+     */
+    public function getUserDeletedList(int $page = 1, int $limit = 10): LengthAwarePaginator
+    {
+        return User::query()
+            ->onlyTrashed()
+            ->orderBy('created_at', 'desc')
+            ->paginate(perPage: $limit, page: $page);
+    }
+
+    /**
+     * Adds workspaces to user.
+     *
+     * @throws RuntimeException
+     */
+    public function addUserWorkspaces(User $user, array $workspaces)
+    {
+        if (!array_is_list($workspaces)) {
+            $this->failedAtRuntime(__('workspace.members.workspaces'), 422);
         }
 
-        if (!$table || !$column) {
-            return null;
+        $user->workspaces()->attach($workspaces);
+    }
+
+    /**
+     * Removes workspaces to user.
+     *
+     * @throws RuntimeException
+     */
+    public function removeUserWorkspaces(User $user, array $workspaces)
+    {
+        if (!array_is_list($workspaces)) {
+            $this->failedAtRuntime(__('workspace.members.workspaces'), 422);
         }
 
-        return DB::table($table)
-            ->select('user_id')
-            ->whereIn($column, function (Builder $query) use ($user, $table, $column) {
-                $query->select("{$table}.{$column}")
-                    ->from($table)
-                    ->where("{$table}.user_id", $user->id)
-                    ->join('role_user', "{$table}.{$column}", "role_user.{$column}")
-                    ->where('role_user.role_id', RoleEnum::MANAGER);
+        $user->workspaces()->detach($workspaces);
+    }
+
+    /**
+     * Gets paginated list of user abilities.
+     */
+    public function getUserAbilities(User $user, int $page = 1, int $limit = 10): LengthAwarePaginator
+    {
+        return $user
+            ->abilities()
+            ->with('abilitable')
+            ->paginate(perPage: $limit, page: $page)
+            ->through(function ($item) {
+                $this->getUserAbilityContext($item);
+                return $item;
             });
+    }
+
+    /**
+     * Update user global abilities, i.e: whole class and all instances level.
+     */
+    public function updateUserGlobalAbilities(User $user, array $data)
+    {
+        $this->formatUpdateUserGlobalAbilitiesData($data);
+
+        [
+            'add' => $abilitiesToAdd,
+            'remove' => $abilitiesToRemove,
+        ] = $data;
+
+        if (empty($abilitiesToAdd) && empty($abilitiesToRemove)) {
+            return;
+        }
+
+        $this->handleAddGlobalAbilitiesToUser($user, $abilitiesToAdd);
+        $this->handleRemoveGlobalAbilitiesFromUser($user, $abilitiesToRemove);
+    }
+
+    /**
+     * Update user abilities.
+     */
+    public function updateUserAbilities(User $user, User $target, array $data)
+    {
+        if (empty($data)) {
+            return;
+        }
+
+        [
+            'add' => $abilitiesToAdd,
+            'remove' => $abilitiesToRemove,
+        ] = $data;
+
+        if (empty($abilitiesToAdd) && empty($abilitiesToRemove)) {
+            return;
+        }
+
+        $abilitiesToAdd = array_diff($abilitiesToAdd, $abilitiesToRemove);
+
+        BouncerFacade::allow($user)->to($abilitiesToAdd, $target);
+        BouncerFacade::disallow($user)->to($abilitiesToRemove, $target);
+    }
+
+    /**
+     * Format update user abilities data array.
+     */
+    protected function formatUpdateUserGlobalAbilitiesData(array &$abilitiesData)
+    {
+        $abilitiesData = array_map(function (array $abilityGroup) {
+            return $this->formatUpdateUserGlobalAbilitiesDataGroup($abilityGroup);
+        }, $abilitiesData);
+
+        $this->removeDuplicateAbilitiesFromData($abilitiesData);
+    }
+
+    /**
+     * Remove duplicate abilities from update user global abilities
+     * data groups.
+     */
+    protected function removeDuplicateAbilitiesFromData(array &$data)
+    {
+        foreach ($data['add'] as $type => $abilities) {
+            if (array_key_exists($type, $data['remove'])) {
+                $data['add'][$type] = array_diff($abilities, $data['remove'][$type]);
+            }
+        }
+    }
+
+    /**
+     * Returns ability-type (resolved into corresponding class name)
+     * keyed array with unique ability names array as values.
+     */
+    protected function formatUpdateUserGlobalAbilitiesDataGroup(array $abilityGroup)
+    {
+        $entityTypes = array_unique(array_column($abilityGroup, 'type'));
+        $formattedAbilities = [];
+
+        foreach ($entityTypes as $entityType) {
+            $abilitiesByType = array_filter($abilityGroup, fn ($entity) => $entity['type'] === $entityType);
+            $uniqueAbilitiesNamesByType = array_values(array_unique(array_column($abilitiesByType, 'name')));
+
+            $formattedAbilities[ResourceEnum::from($entityType)->class()] = $uniqueAbilitiesNamesByType;
+        }
+
+        return $formattedAbilities;
+    }
+
+    /**
+     * Handle user abilities update addition action.
+     */
+    protected function handleAddGlobalAbilitiesToUser(User $user, array $abilitiesToAdd)
+    {
+        foreach ($abilitiesToAdd as $type => $abilityNames) {
+            if (!empty($abilityNames)) {
+                BouncerFacade::allow($user)->to($abilityNames, $type);
+            }
+        }
+    }
+
+    /**
+     * Handle user abilities update removal action.
+     */
+    protected function handleRemoveGlobalAbilitiesFromUser(User $user, array $abilitiesToRemove)
+    {
+        foreach ($abilitiesToRemove as $type => $abilityNames) {
+            if (!empty($abilityNames)) {
+                BouncerFacade::disallow($user)->to($abilityNames, $type);
+            }
+        }
     }
 }

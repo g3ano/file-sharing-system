@@ -172,10 +172,8 @@ return [
     */
 
     'custom' => [
-        'roles' => [
-            'context' => 'Context is invalid',
-            'resource_member' => 'User is not a member of :resource',
-            'lack_permissions' => 'Insufficient permissions to assign the selected role.',
+        'abilities' => [
+            'id_do_not_exists' => 'An ID from list is invalid.',
         ],
     ],
 

@@ -2,8 +2,9 @@
 
 namespace App\Http\Resources\v1;
 
-use App\Http\Resources\BaseResource;
 use Illuminate\Http\Request;
+use App\Http\Resources\BaseResource;
+use Illuminate\Http\Resources\MissingValue;
 
 class WorkspaceResource extends BaseResource
 {
@@ -27,6 +28,21 @@ class WorkspaceResource extends BaseResource
                 'owner' => new UserResource($this->whenLoaded('owner')),
                 'members' => new UserCollection($this->whenLoaded('members')),
             ]),
+            'meta' => $this->getMeta(),
         ];
+    }
+
+    protected function getMeta(): array|MissingValue
+    {
+        $result = [];
+        $result['createdAt'] = $this->created_at->format('F j, Y');
+
+        if ($this->capabilities) {
+            $result['capabilities'] = $this->capabilities;
+        }
+
+        $result['isOwner'] = $this->whenNotNull($this->isOwner);
+
+        return $result ?: new MissingValue();
     }
 }

@@ -2,8 +2,9 @@
 
 namespace App\Http\Resources\v1;
 
-use App\Http\Resources\BaseResource;
 use Illuminate\Http\Request;
+use App\Http\Resources\BaseResource;
+use Illuminate\Http\Resources\MissingValue;
 
 class ProjectResource extends BaseResource
 {
@@ -23,6 +24,15 @@ class ProjectResource extends BaseResource
                 'description' => $this->description,
                 'createdAt' => $this->created_at,
             ]),
+            'meta' => $this->getMeta(),
         ];
+    }
+
+    protected function getMeta(): array|MissingValue
+    {
+        $result = [];
+        $result['createdAt'] = $this->created_at->format('F j, Y');
+
+        return $result ?: new MissingValue();
     }
 }
