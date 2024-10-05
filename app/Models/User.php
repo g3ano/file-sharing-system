@@ -4,20 +4,25 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 
-use App\Helpers\Roleable;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
+use App\Helpers\HasAbilityForModel;
+use App\Observers\UserObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Silber\Bouncer\Database\HasRolesAndAbilities;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
+#[ObservedBy([UserObserver::class])]
 class User extends Authenticatable
 {
     use HasFactory;
     use Notifiable;
-    use Roleable;
     use SoftDeletes;
+    use HasRolesAndAbilities;
+    use HasAbilityForModel;
 
     public const USERNAME_BASE = 'user';
 
@@ -61,16 +66,6 @@ class User extends Authenticatable
     public static function user(): ?self
     {
         return once(fn () => Auth::user());
-    }
-
-    public function roles(): BelongsToMany
-    {
-        return $this->belongsToMany(Role::class)
-            ->using(RoleUser::class)
-            ->withPivot([
-                'workspace_id', 'project_id',
-            ])
-            ->withTimestamps();
     }
 
     public function workspaces(): BelongsToMany
