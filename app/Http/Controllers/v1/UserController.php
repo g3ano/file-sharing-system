@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\v1;
 
+use Illuminate\Http\JsonResponse;
 use Throwable;
 use App\Models\User;
 use App\Enums\AbilityEnum;
@@ -20,6 +21,9 @@ use App\Http\Requests\v1\User\AddUserWorkspacesRequest;
 use App\Http\Requests\v1\User\UpdateUserAbilitiesRequest;
 use App\Http\Requests\v1\User\RemoveUserWorkspacesRequest;
 use App\Http\Requests\v1\User\UpdateUserGlobalAbilitiesRequest;
+use App\Models\Ability;
+use Illuminate\Database\Eloquent\Builder;
+use Silber\Bouncer\Database\Models;
 
 class UserController extends Controller
 {
@@ -32,35 +36,33 @@ class UserController extends Controller
     {
         $this->userService = $userService;
         $this->relationships = [];
-        $this->orderable = [
-            'id', 'createdAt', 'firstName',
-        ];
+        $this->orderable = ["id", "createdAt", "firstName"];
         $this->orderableMap = [
-            'createdAt' => 'created_at',
-            'firstName' => 'first_name',
+            "createdAt" => "created_at",
+            "firstName" => "first_name",
         ];
     }
 
     /**
      * Determine whether if any user is authenticated.
      */
-    public function getIsUserAuth()
+    public function getIsUserAuth(): JsonResponse
     {
         return $this->succeed([
-            'authenticated' => Auth::guard('web')->check(),
+            "authenticated" => Auth::guard("web")->check(),
         ]);
     }
 
     /**
      * Get current **Authenticated** user
      */
-    public function getAuthUser()
+    public function getAuthUser(): UserResource
     {
         $auth = User::user();
         $auth->includeEmail = true;
 
         if (!$auth || !$auth->can(AbilityEnum::VIEW->value, $auth)) {
-            $this->failedAsNotFound('user');
+            $this->failedAsNotFound("user");
         }
 
         $this->userService->getUserCapabilitiesForUser($auth, $auth, true);
@@ -71,15 +73,13 @@ class UserController extends Controller
     /**
      * Get user by ID.
      */
-    public function getUserByID(string $userID)
+    public function getUserByID(string $userID): UserResource
     {
-        $user = User::query()
-            ->where('id', $userID)
-            ->first();
+        $user = User::query()->where("id", $userID)->first();
         $auth = User::user();
 
         if (!$user || !$auth->can(AbilityEnum::VIEW->value, $user)) {
-            $this->failedAsNotFound('user');
+            $this->failedAsNotFound("user");
         }
 
         $this->userService->getUserCapabilitiesForUser($auth, $user);
@@ -91,9 +91,9 @@ class UserController extends Controller
      * Get paginated list of users, order field can be customized together
      * with order direction, list can be also be searched in.
      */
-    public function getUserList(Request $request)
+    public function getUserList(Request $request): UserCollection
     {
-        $isSearchQuery = (bool) ($request->query('searchValue') ?? '');
+        $isSearchQuery = (bool) ($request->query("searchValue") ?? "");
 
         if ($isSearchQuery) {
             return $this->searchUserList($request);
@@ -102,14 +102,19 @@ class UserController extends Controller
         $auth = User::user();
 
         if (!$auth || !$auth->can(AbilityEnum::LIST->value, User::class)) {
-            $this->failedAsNotFound('user');
+            $this->failedAsNotFound("user");
         }
 
         [$page, $limit] = $this->getPaginatorMetadata($request);
         [$orderBy, $orderByDir] = $this->getOrderByMeta($request);
-        $includeEmail = $request->boolean('includeEmail') ?? false;
+        $includeEmail = $request->boolean("includeEmail") ?? false;
 
-        $users = $this->userService->getUserList($page, $limit, $orderBy, $orderByDir);
+        $users = $this->userService->getUserList(
+            $page,
+            $limit,
+            $orderBy,
+            $orderByDir
+        );
 
         $users = $users->through(function ($item) use ($auth, $includeEmail) {
             $item->includeEmail = $includeEmail;
@@ -123,34 +128,38 @@ class UserController extends Controller
     /**
      * Get users count.
      */
-    public function getUserListCount()
+    public function getUserListCount(): JsonResponse
     {
         $auth = User::user();
 
         if (!$auth || !$auth->can(AbilityEnum::LIST->value, User::class)) {
-            $this->failedWithMessage(__('user.not_found'), 404);
+            $this->failedWithMessage(__("user.not_found"), 404);
         }
 
         $count = User::query()->count();
 
-        return $this->succeed([
-            'data' => $count,
-        ], 200, false);
+        return $this->succeed(
+            [
+                "data" => $count,
+            ],
+            200,
+            false
+        );
     }
 
     /**
      * Get paginated list of users.
      */
-    public function getDeletedUserList(Request $request)
+    public function getDeletedUserList(Request $request): UserCollection
     {
         $auth = User::user();
 
         if (!$auth || !$auth->can(AbilityEnum::LIST->value, User::class)) {
-            $this->failedWithMessage(__('user.not_found'), 404);
+            $this->failedWithMessage(__("user.not_found"), 404);
         }
 
         [$page, $limit] = $this->getPaginatorMetadata($request);
-        $includeEmail = $request->boolean('includeEmail') ?? false;
+        $includeEmail = $request->boolean("includeEmail") ?? false;
 
         $users = $this->userService->getUserDeletedList($page, $limit);
 
@@ -166,29 +175,32 @@ class UserController extends Controller
     /**
      * Deletes user by ID.
      */
-    public function deleteUser(string $userID)
+    public function deleteUser(string $userID): JsonResponse
     {
         $auth = User::user();
-        $user = User::query()->where('id', $userID)->first();
+        $user = User::query()->where("id", $userID)->first();
 
         if (!$user || !$auth->can(AbilityEnum::DELETE->value, $user)) {
-            $this->failedAsNotFound('user');
+            $this->failedAsNotFound("user");
         }
 
         if (!$user->delete()) {
-            Log::error('Failed to deleted user', [
-                'userID' => $user->id,
+            Log::error("Failed to deleted user", [
+                "userID" => $user->id,
             ]);
 
-            $this->failedWithMessage(__('user.delete.soft'), 500);
+            $this->failedWithMessage(__("user.delete.soft"), 500);
         }
 
         return $this->succeedWithStatus();
     }
 
-    public function searchUserList(Request $request)
+    /**
+     * Search user list.
+     */
+    public function searchUserList(Request $request): UserCollection
     {
-        $searchValue = $request->query('searchValue') ?? '';
+        $searchValue = $request->query("searchValue") ?? "";
 
         if (!$searchValue) {
             return $this->succeedWithPagination();
@@ -197,22 +209,29 @@ class UserController extends Controller
         $auth = User::user();
 
         if (!$auth || !$auth->can(AbilityEnum::LIST->value, User::class)) {
-            $this->failedWithMessage(__('user.not_found'), 404);
+            $this->failedWithMessage(__("user.not_found"), 404);
         }
 
         [$page, $limit] = $this->getPaginatorMetadata($request);
         [$orderBy, $orderByDir] = $this->getOrderByMeta($request);
         $includes = $this->getIncludedRelationships($request);
-        $includeEmail = $request->boolean('includeEmail') ?? false;
+        $includeEmail = $request->boolean("includeEmail") ?? false;
 
         if (!$auth) {
-            $this->failedAsNotFound('user');
+            $this->failedAsNotFound("user");
         }
 
         /**
          * @var LengthAwarePaginator
          */
-        $users = $this->userService->searchForUsers($searchValue, $page, $limit, $orderBy, $orderByDir, $includes);
+        $users = $this->userService->searchForUsers(
+            $searchValue,
+            $page,
+            $limit,
+            $orderBy,
+            $orderByDir,
+            $includes
+        );
 
         $users->through(function ($item) use ($auth, $includeEmail) {
             $item->includeEmail = $includeEmail;
@@ -226,17 +245,22 @@ class UserController extends Controller
     /**
      * Adds workspaces to user.
      */
-    public function addUserWorkspaces(AddUserWorkspacesRequest $request, string $userID)
-    {
+    public function addUserWorkspaces(
+        AddUserWorkspacesRequest $request,
+        string $userID
+    ): JsonResponse {
         $auth = User::user();
-        $user = User::query()->where('id', $userID)->first();
+        $user = User::query()->where("id", $userID)->first();
 
-        if (!$user || !$auth->can(AbilityEnum::USER_WORKSPACE_ADD->value, $user)) {
-            $this->failedAsNotFound('user');
+        if (
+            !$user ||
+            !$auth->can(AbilityEnum::USER_WORKSPACE_ADD->value, $user)
+        ) {
+            $this->failedAsNotFound("user");
         }
 
         [
-            'workspaces' => $workspaces,
+            "workspaces" => $workspaces,
         ] = $request->validated();
 
         try {
@@ -244,7 +268,7 @@ class UserController extends Controller
         } catch (Throwable $e) {
             $this->failed(
                 $this->parseExceptionError($e),
-                $this->parseExceptionCode($e),
+                $this->parseExceptionCode($e)
             );
         }
 
@@ -256,17 +280,22 @@ class UserController extends Controller
     /**
      * Removes workspaces to user.
      */
-    public function removeUserWorkspaces(RemoveUserWorkspacesRequest $request, string $userID)
-    {
+    public function removeUserWorkspaces(
+        RemoveUserWorkspacesRequest $request,
+        string $userID
+    ): JsonResponse {
         $auth = User::user();
-        $user = User::query()->where('id', $userID)->first();
+        $user = User::query()->where("id", $userID)->first();
 
-        if (!$user || !$auth->can(AbilityEnum::USER_WORKSPACE_REMOVE->value, $user)) {
-            $this->failedAsNotFound('user');
+        if (
+            !$user ||
+            !$auth->can(AbilityEnum::USER_WORKSPACE_REMOVE->value, $user)
+        ) {
+            $this->failedAsNotFound("user");
         }
 
         [
-            'workspaces' => $workspaces,
+            "workspaces" => $workspaces,
         ] = $request->validated();
 
         try {
@@ -274,16 +303,17 @@ class UserController extends Controller
         } catch (Throwable $e) {
             $this->failed(
                 $this->parseExceptionError($e),
-                $this->parseExceptionCode($e),
+                $this->parseExceptionCode($e)
             );
         }
 
-        event(new WorkspaceMembershipUpdated(
-            $user->id,
-            $workspaces,
-            WorkspaceMembershipUpdatedActionEnum::REMOVE,
-        ));
-
+        event(
+            new WorkspaceMembershipUpdated(
+                $user->id,
+                $workspaces,
+                WorkspaceMembershipUpdatedActionEnum::REMOVE
+            )
+        );
         return $this->succeedWithStatus();
     }
 
@@ -292,11 +322,14 @@ class UserController extends Controller
      */
     public function getUserAbilities(Request $request, string $userID)
     {
-        $user = User::query()->where('id', $userID)->first();
+        $user = User::query()->where("id", $userID)->first();
         $auth = User::user();
 
-        if (!$user || !$auth->can(AbilityEnum::USER_ABILITY_VIEW->value, $user)) {
-            $this->failedAsNotFound('user');
+        if (
+            !$user ||
+            !$auth->can(AbilityEnum::USER_ABILITY_VIEW->value, $user)
+        ) {
+            $this->failedAsNotFound("user");
         }
 
         [$page, $limit] = $this->getPaginatorMetadata($request);
@@ -306,21 +339,48 @@ class UserController extends Controller
         return new AbilityCollection($abilities);
     }
 
+    /*
+     * Get user global abilities (abilities applies class level).
+     */
+    public function getUserGlobalAbilities(Request $request, string $userID)
+    {
+        $user = User::query()->where("id", $userID)->first();
+        $auth = User::user();
+
+        if (
+            !$user ||
+            !$auth->can(AbilityEnum::USER_ABILITY_VIEW->value, $user)
+        ) {
+            $this->failedAsNotFound("user");
+        }
+
+        [$page, $limit] = $this->getPaginatorMetadata($request);
+
+        $abilities = $this->userService->getUserGlobalAbilities(
+            $user,
+            $page,
+            $limit
+        );
+
+        return new AbilityCollection($abilities);
+    }
+
     /**
      * Update user global abilities (applied at class level).
      */
-    public function updateUserGlobalAbilities(UpdateUserGlobalAbilitiesRequest $request, string $userID)
-    {
-        $user = User::query()->where('id', $userID)->first();
+    public function updateUserGlobalAbilities(
+        UpdateUserGlobalAbilitiesRequest $request,
+        string $userID
+    ) {
+        $user = User::query()->where("id", $userID)->first();
         $auth = User::user();
 
         if (
             !$user ||
             !$auth->can(AbilityEnum::USER_ABILITY_MANAGE->value, $user) ||
-            $user->can('*', '*') &&
-            !$auth->can('*', '*')
+            ($user->can("*", "*") && !$auth->can("*", "*"))
         ) {
-            $this->failedAsNotFound('user');
+            $this->failedAsNotFound("user");
         }
 
         $data = $request->validated();
@@ -333,19 +393,22 @@ class UserController extends Controller
     /**
      * Update user abilities (applied at class level).
      */
-    public function updateUserAbilities(UpdateUserAbilitiesRequest $request, string $userID, string $targetUserID)
-    {
-        $user = User::query()->where('id', $userID)->first();
-        $targetUser = User::query()->where('id', $targetUserID)->first();
+    public function updateUserAbilities(
+        UpdateUserAbilitiesRequest $request,
+        string $userID,
+        string $targetUserID
+    ): JsonResponse {
+        $user = User::query()->where("id", $userID)->first();
+        $targetUser = User::query()->where("id", $targetUserID)->first();
         $auth = User::user();
 
         if (
-            !$user || !$targetUser ||
+            !$user ||
+            !$targetUser ||
             !$auth->can(AbilityEnum::USER_ABILITY_MANAGE->value, $user) ||
-            $user->can('*', '*') &&
-            !$auth->can('*', '*')
+            ($user->can("*", "*") && !$auth->can("*", "*"))
         ) {
-            $this->failedAsNotFound('user');
+            $this->failedAsNotFound("user");
         }
 
         $data = $request->validated();

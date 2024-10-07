@@ -24,7 +24,7 @@ class User extends Authenticatable
     use HasRolesAndAbilities;
     use HasAbilityForModel;
 
-    public const USERNAME_BASE = 'user';
+    public const USERNAME_BASE = "user";
 
     /**
      * The attributes that are mass assignable.
@@ -32,12 +32,12 @@ class User extends Authenticatable
      * @var array<int, string>
      */
     protected $fillable = [
-        'first_name',
-        'last_name',
-        'username',
-        'email',
-        'slug',
-        'password',
+        "first_name",
+        "last_name",
+        "username",
+        "email",
+        "slug",
+        "password",
     ];
 
     /**
@@ -45,10 +45,7 @@ class User extends Authenticatable
      *
      * @var array<int, string>
      */
-    protected $hidden = [
-        'password',
-        'remember_token',
-    ];
+    protected $hidden = ["password", "remember_token"];
 
     /**
      * Get the attributes that should be cast.
@@ -58,14 +55,14 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
+            "email_verified_at" => "datetime",
+            "password" => "hashed",
         ];
     }
 
     public static function user(): ?self
     {
-        return once(fn () => Auth::user());
+        return once(fn() => Auth::user());
     }
 
     public function workspaces(): BelongsToMany

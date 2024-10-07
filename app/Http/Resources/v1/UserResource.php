@@ -16,35 +16,33 @@ class UserResource extends BaseResource
     public function toArray(Request $request): array
     {
         return [
-            'id' => $this->id,
-            'type' => 'users',
-            'attributes' => $this->getAttributes([
-                'firstName' => $this->first_name,
-                'lastName' => $this->last_name,
-                'slug' => $this->slug,
-                'username' => $this->username,
-                'email' => $this->includeEmail ?? null
-                    ? $this->email
-                    : null,
-                'createdAt' => $this->created_at,
+            "id" => $this->id,
+            "type" => "users",
+            "attributes" => $this->getAttributes([
+                "firstName" => $this->first_name,
+                "lastName" => $this->last_name,
+                "slug" => $this->slug,
+                "username" => $this->username,
+                "email" => $this->includeEmail ?? null ? $this->email : null,
+                "createdAt" => $this->created_at,
             ]),
-            'relationships' => $this->getRelationships([
-                'roles' => new RoleCollection($this->whenLoaded('roles')),
+            "relationships" => $this->getRelationships([
+                "roles" => new RoleCollection($this->whenLoaded("roles")),
             ]),
-            'meta' => $this->getMeta(),
+            "meta" => $this->getMeta(),
         ];
     }
 
     protected function getMeta(): array|MissingValue
     {
         $result = [];
-        $result['createdAt'] = $this->created_at->format('F j, Y');
+        $result["createdAt"] = $this->created_at->format("F j, Y");
 
         if ($this->capabilities) {
-            $result['capabilities'] = $this->capabilities;
+            $result["capabilities"] = $this->capabilities;
         }
 
-        $result['isOwner'] = $this->whenNotNull($this->isOwner);
+        $result["isOwner"] = $this->whenNotNull($this->isOwner);
 
         return $result ?: new MissingValue();
     }

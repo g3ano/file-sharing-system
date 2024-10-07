@@ -25,10 +25,16 @@ class AddWorkspaceMembersRequest extends BaseRequest
     public function rules(): array
     {
         return [
-            'members' => ['bail', 'present', 'array', 'min:1'],
-            'members.*' => [
-                'bail', 'min:1', 'numeric', Rule::exists(User::class, 'id'),
-                Rule::unique(UserWorkspace::class, 'user_id')->where('workspace_id', $this->workspaceID),
+            "members" => ["bail", "present", "array", "min:1"],
+            "members.*" => [
+                "bail",
+                "min:1",
+                "numeric",
+                Rule::exists(User::class, "id"),
+                Rule::unique(UserWorkspace::class, "user_id")->where(
+                    "workspace_id",
+                    $this->workspaceID
+                ),
             ],
         ];
     }
@@ -36,7 +42,7 @@ class AddWorkspaceMembersRequest extends BaseRequest
     public function attributes(): array
     {
         return [
-            'members.*' => 'member',
+            "members.*" => "member",
         ];
     }
 }

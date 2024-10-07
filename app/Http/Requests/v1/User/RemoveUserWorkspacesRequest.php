@@ -3,7 +3,6 @@
 namespace App\Http\Requests\v1\User;
 
 use App\Http\Requests\BaseRequest;
-use App\Models\User;
 use App\Models\UserWorkspace;
 use App\Models\Workspace;
 use Illuminate\Validation\Rule;
@@ -26,10 +25,16 @@ class RemoveUserWorkspacesRequest extends BaseRequest
     public function rules(): array
     {
         return [
-            'workspaces' => ['bail', 'present', 'array', 'min:1'],
-            'workspaces.*' => [
-                'bail', 'min:1', 'numeric', Rule::exists(Workspace::class, 'id'),
-                Rule::exists(UserWorkspace::class, 'workspace_id')->where('user_id', $this->userID),
+            "workspaces" => ["bail", "present", "array", "min:1"],
+            "workspaces.*" => [
+                "bail",
+                "min:1",
+                "numeric",
+                Rule::exists(Workspace::class, "id"),
+                Rule::exists(UserWorkspace::class, "workspace_id")->where(
+                    "user_id",
+                    $this->userID
+                ),
             ],
         ];
     }
@@ -37,7 +42,7 @@ class RemoveUserWorkspacesRequest extends BaseRequest
     public function attributes(): array
     {
         return [
-            'workspaces.*' => 'workspace',
+            "workspaces.*" => "workspace",
         ];
     }
 }

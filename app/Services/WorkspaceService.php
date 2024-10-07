@@ -14,22 +14,28 @@ class WorkspaceService extends BaseService
     /**
      * Determine whether user is member of a workspace.
      */
-    public function isUserWorkspaceMember(Workspace $workspace, User $user): bool
-    {
-        return (bool) $user->workspaces()
-            ->wherePivot('workspace_id', $workspace->id)
+    public function isUserWorkspaceMember(
+        Workspace $workspace,
+        User $user
+    ): bool {
+        return (bool) $user
+            ->workspaces()
+            ->wherePivot("workspace_id", $workspace->id)
             ->exists();
     }
 
     /**
      * Determine whether user is member of a workspace.
      */
-    public function isUserWorkspaceMemberByID(int|string $workspaceID, User $user): bool
-    {
+    public function isUserWorkspaceMemberByID(
+        int|string $workspaceID,
+        User $user
+    ): bool {
         return (bool) once(function () use ($user, $workspaceID) {
-            return $user->workspaces()
-             ->wherePivot('workspace_id', $workspaceID)
-             ->exists();
+            return $user
+                ->workspaces()
+                ->wherePivot("workspace_id", $workspaceID)
+                ->exists();
         });
     }
 
@@ -39,10 +45,10 @@ class WorkspaceService extends BaseService
     public function createWorkspace(User $user, array $data): Workspace
     {
         return Workspace::query()->create([
-            'name' => $data['name'],
-            'description' => $data['description'],
-            'slug' => $this->getSlug($data['name']),
-            'user_id' => $user->id,
+            "name" => $data["name"],
+            "description" => $data["description"],
+            "slug" => $this->getSlug($data["name"]),
+            "user_id" => $user->id,
         ]);
     }
 
@@ -54,7 +60,10 @@ class WorkspaceService extends BaseService
     public function addWorkspaceMembers(Workspace $workspace, array $members)
     {
         if (!array_is_list($members)) {
-            $this->failedAtRuntime(__('workspace.members.invalid_members_array'), 422);
+            $this->failedAtRuntime(
+                __("workspace.members.invalid_members_array"),
+                422
+            );
         }
 
         $workspace->members()->attach($members);
@@ -68,7 +77,10 @@ class WorkspaceService extends BaseService
     public function removeWorkspaceMembers(Workspace $workspace, array $members)
     {
         if (!array_is_list($members)) {
-            $this->failedAtRuntime(__('workspace.members.invalid_members_array'), 422);
+            $this->failedAtRuntime(
+                __("workspace.members.invalid_members_array"),
+                422
+            );
         }
 
         $workspace->members()->detach($members);
@@ -77,38 +89,49 @@ class WorkspaceService extends BaseService
     /**
      * Get paginated list of workspaces, list can be searched.
      */
-    public function getWorkspaceList(string|int $page, string|int $limit, ?string $searchValue = null, array $includes = [])
-    {
-        $query = Workspace::query()
-            ->with($includes)
-            ->select('workspaces.*');
+    public function getWorkspaceList(
+        string|int $page,
+        string|int $limit,
+        ?string $searchValue = null,
+        array $includes = []
+    ) {
+        $query = Workspace::query()->with($includes)->select("workspaces.*");
 
         if ($searchValue) {
             $searchValue = "%$searchValue%";
-            $query = $query->whereAny([
-                'name', 'description',
-            ], 'ILIKE', $searchValue);
+            $query = $query->whereAny(
+                ["name", "description"],
+                "ILIKE",
+                $searchValue
+            );
         }
 
         return $query
-            ->orderBy('created_at')
+            ->orderBy("created_at")
             ->paginate(perPage: $limit, page: $page);
     }
 
     /**
      * Get user joined workspaces.
      */
-    public function getUserWorkspaceList(User $user, int $page = 1, int $limit = 10, ?string $searchValue = null, array $includes = [], string $orderBy = 'created_at', string $orderByDirection = 'asc')
-    {
-        $query = $user
-            ->workspaces()
-            ->with($includes);
+    public function getUserWorkspaceList(
+        User $user,
+        int $page = 1,
+        int $limit = 10,
+        ?string $searchValue = null,
+        array $includes = [],
+        string $orderBy = "created_at",
+        string $orderByDirection = "asc"
+    ) {
+        $query = $user->workspaces()->with($includes);
 
         if ($searchValue) {
             $searchValue = "%$searchValue%";
-            $query = $query->whereAny([
-                'name', 'description',
-            ], 'ILIKE', $searchValue);
+            $query = $query->whereAny(
+                ["name", "description"],
+                "ILIKE",
+                $searchValue
+            );
         }
 
         return $query
@@ -116,20 +139,60 @@ class WorkspaceService extends BaseService
             ->paginate(perPage: $limit, page: $page);
     }
 
-    public function getUserCapabilitiesForWorkspace(User $auth, Workspace &$workspace, array $additional = [])
-    {
+    public function getUserCapabilitiesForWorkspace(
+        User $auth,
+        Workspace &$workspace,
+        array $additional = []
+    ) {
         $capabilities = [
-            AbilityEnum::VIEW->value => $auth->can(AbilityEnum::VIEW->value, $workspace),
-            AbilityEnum::UPDATE->value => $auth->can(AbilityEnum::UPDATE->value, $workspace),
-            AbilityEnum::DELETE->value => $auth->can(AbilityEnum::DELETE->value, $workspace),
-            AbilityEnum::RESTORE->value => $auth->can(AbilityEnum::RESTORE->value, $workspace),
-            AbilityEnum::FORCE_DELETE->value => $auth->can(AbilityEnum::FORCE_DELETE->value, $workspace),
-            AbilityEnum::WORKSPACE_MEMBER_LIST->value => $auth->can(AbilityEnum::WORKSPACE_MEMBER_LIST->value, $workspace),
-            AbilityEnum::WORKSPACE_MEMBER_ADD->value => $auth->can(AbilityEnum::WORKSPACE_MEMBER_ADD->value, $workspace),
-            AbilityEnum::WORKSPACE_MEMBER_REMOVE->value => $auth->can(AbilityEnum::WORKSPACE_MEMBER_REMOVE->value, $workspace),
-            AbilityEnum::WORKSPACE_MEMBER_ABILITY_MANAGE->value => $auth->can(AbilityEnum::WORKSPACE_MEMBER_ABILITY_MANAGE->value, $workspace),
-            AbilityEnum::WORKSPACE_PROJECT_ADD->value => $auth->can(AbilityEnum::WORKSPACE_PROJECT_ADD->value, $workspace),
-            AbilityEnum::WORKSPACE_PROJECT_REMOVE->value => $auth->can(AbilityEnum::WORKSPACE_PROJECT_REMOVE->value, $workspace),
+            AbilityEnum::VIEW->value => $auth->can(
+                AbilityEnum::VIEW->value,
+                $workspace
+            ),
+            AbilityEnum::UPDATE->value => $auth->can(
+                AbilityEnum::UPDATE->value,
+                $workspace
+            ),
+            AbilityEnum::DELETE->value => $auth->can(
+                AbilityEnum::DELETE->value,
+                $workspace
+            ),
+            AbilityEnum::RESTORE->value => $auth->can(
+                AbilityEnum::RESTORE->value,
+                $workspace
+            ),
+            AbilityEnum::FORCE_DELETE->value => $auth->can(
+                AbilityEnum::FORCE_DELETE->value,
+                $workspace
+            ),
+            AbilityEnum::WORKSPACE_MEMBER_LIST->value => $auth->can(
+                AbilityEnum::WORKSPACE_MEMBER_LIST->value,
+                $workspace
+            ),
+            AbilityEnum::WORKSPACE_MEMBER_ADD->value => $auth->can(
+                AbilityEnum::WORKSPACE_MEMBER_ADD->value,
+                $workspace
+            ),
+            AbilityEnum::WORKSPACE_MEMBER_REMOVE->value => $auth->can(
+                AbilityEnum::WORKSPACE_MEMBER_REMOVE->value,
+                $workspace
+            ),
+            AbilityEnum::WORKSPACE_MEMBER_ABILITY_MANAGE->value => $auth->can(
+                AbilityEnum::WORKSPACE_MEMBER_ABILITY_MANAGE->value,
+                $workspace
+            ),
+            AbilityEnum::WORKSPACE_PROJECT_LIST->value => $auth->can(
+                AbilityEnum::WORKSPACE_PROJECT_LIST->value,
+                $workspace
+            ),
+            AbilityEnum::WORKSPACE_PROJECT_ADD->value => $auth->can(
+                AbilityEnum::WORKSPACE_PROJECT_ADD->value,
+                $workspace
+            ),
+            AbilityEnum::WORKSPACE_PROJECT_REMOVE->value => $auth->can(
+                AbilityEnum::WORKSPACE_PROJECT_REMOVE->value,
+                $workspace
+            ),
             ...$additional,
         ];
 
@@ -139,11 +202,20 @@ class WorkspaceService extends BaseService
     /**
      * Get user capabilities for workspace members.
      */
-    public function getUserCapabilitiesForWorkspaceMember(User $auth, User &$member, array $additional = [])
-    {
+    public function getUserCapabilitiesForWorkspaceMember(
+        User $auth,
+        User &$member,
+        array $additional = []
+    ) {
         $capabilities = [
-            AbilityEnum::VIEW->value => $auth->can(AbilityEnum::VIEW->value, $member),
-            AbilityEnum::USER_WORKSPACE_REMOVE->value => $auth->can(AbilityEnum::USER_WORKSPACE_REMOVE->value, $member),
+            AbilityEnum::VIEW->value => $auth->can(
+                AbilityEnum::VIEW->value,
+                $member
+            ),
+            AbilityEnum::USER_WORKSPACE_REMOVE->value => $auth->can(
+                AbilityEnum::USER_WORKSPACE_REMOVE->value,
+                $member
+            ),
             ...$additional,
         ];
 
@@ -153,8 +225,10 @@ class WorkspaceService extends BaseService
     /**
      * Writes state data about workspace member related to workspace.
      */
-    public function getWorkspaceMemberState(Workspace &$workspace, User &$member)
-    {
+    public function getWorkspaceMemberState(
+        Workspace &$workspace,
+        User &$member
+    ) {
         $this->isMemberWorkspaceOwner($workspace, $member);
     }
 
@@ -168,28 +242,36 @@ class WorkspaceService extends BaseService
     }
 
     /**
-     * Get workspace member abilities, with broad abilities included.
+     * Get workspace member abilities, broad abilities can be included.
      */
-    public function getWorkspaceMemberAbilities(Workspace $workspace, User $user, int $page = 1, int $limit = 10): LengthAwarePaginator
-    {
+    public function getWorkspaceMemberAbilities(
+        Workspace $workspace,
+        User $user,
+        int $page = 1,
+        int $limit = 10,
+        bool $broad = false
+    ): LengthAwarePaginator {
         return $user
-            ->getAbilitiesFor($workspace, broad: true)
-            ->with('abilitable')
+            ->prepareAbilitiesBuilderFor($workspace, broad: $broad)
+            ->with("abilitable")
             ->paginate(perPage: $limit, page: $page);
     }
 
     /**
      * Update workspace member abilities.
      */
-    public function updateWorkspaceMemberAbilities(User $user, Workspace $workspace, array $data = [])
-    {
+    public function updateWorkspaceMemberAbilities(
+        User $user,
+        Workspace $workspace,
+        array $data = []
+    ) {
         if (empty($data)) {
             return;
         }
 
         [
-            'add' => $abilitiesToAdd,
-            'remove' => $abilitiesToRemove,
+            "add" => $abilitiesToAdd,
+            "remove" => $abilitiesToRemove,
         ] = $data;
 
         if (empty($abilitiesToAdd) && empty($abilitiesToRemove)) {
