@@ -6,29 +6,33 @@ use Illuminate\Http\Request;
 
 trait HasOrderMeta
 {
-    private const ORDER_BY_PARAM = 'orderBy';
-    private const ORDER_BY_DIR_PARAM = 'orderByDir';
+    private const ORDER_BY_PARAM = "orderBy";
+    private const ORDER_BY_DIR_PARAM = "orderByDir";
 
     protected array $orderable = [];
     protected array $orderableMap = [];
-    protected array $directions = [
-        'desc', 'asc',
-    ];
-    private $orderByDefault = 'created_at';
-    private $orderByDefaultDirection = 'asc';
+    protected array $directions = ["desc", "asc"];
+    private $orderByDefault = "created_at";
+    private $orderByDefaultDirection = "asc";
 
+    /**
+     * @return array|array<int,mixed>
+     */
     public function getOrderByMeta(Request $request): array
     {
-        $result = [
-            $this->orderByDefault, $this->orderByDefaultDirection,
-        ];
+        $result = [$this->orderByDefault, $this->orderByDefaultDirection];
 
-        if (!$this->orderable || !empty($this->orderableMap) && array_is_list($this->orderableMap)) {
+        if (
+            !$this->orderable ||
+            (!empty($this->orderableMap) && array_is_list($this->orderableMap))
+        ) {
             return $result;
         }
 
         $orderByField = $request->query(self::ORDER_BY_PARAM);
-        $orderByDIR = $request->query(self::ORDER_BY_DIR_PARAM) ?? $this->orderByDefaultDirection;
+        $orderByDIR =
+            $request->query(self::ORDER_BY_DIR_PARAM) ??
+            $this->orderByDefaultDirection;
 
         if (!$orderByField || is_array($orderByField)) {
             return $result;
