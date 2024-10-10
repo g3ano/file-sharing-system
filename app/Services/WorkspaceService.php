@@ -8,6 +8,7 @@ use RuntimeException;
 use App\Models\Workspace;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Silber\Bouncer\BouncerFacade;
+use Throwable;
 
 class WorkspaceService extends BaseService
 {
@@ -259,6 +260,8 @@ class WorkspaceService extends BaseService
 
     /**
      * Update workspace member abilities.
+     *
+     * @throws Throwable
      */
     public function updateWorkspaceMemberAbilities(
         User $user,
@@ -280,7 +283,29 @@ class WorkspaceService extends BaseService
 
         $abilitiesToAdd = array_diff($abilitiesToAdd, $abilitiesToRemove);
 
-        BouncerFacade::allow($user)->to($abilitiesToAdd, $workspace);
-        BouncerFacade::disallow($user)->to($abilitiesToRemove, $workspace);
+        try {
+            if (!empty($abilitiesToAdd)) {
+                BouncerFacade::disallow($user)->to($abilitiesToAdd, $workspace);
+                BouncerFacade::unforbid($user)->to($abilitiesToAdd, $workspace);
+                BouncerFacade::allow($user)->to($abilitiesToAdd, $workspace);
+            }
+
+            if (!empty($abilitiesToRemove)) {
+                BouncerFacade::disallow($user)->to(
+                    $abilitiesToRemove,
+                    $workspace
+                );
+                BouncerFacade::unforbid($user)->to(
+                    $abilitiesToRemove,
+                    $workspace
+                );
+                BouncerFacade::forbid($user)->to(
+                    $abilitiesToRemove,
+                    $workspace
+                );
+            }
+        } catch (Throwable $e) {
+            $this->failedAtRuntime($e->getMessage(), $e->getCode());
+        }
     }
 }
