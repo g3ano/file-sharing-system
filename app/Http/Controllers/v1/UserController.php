@@ -91,7 +91,7 @@ class UserController extends Controller
      * Get paginated list of users, order field can be customized together
      * with order direction, list can be also be searched in.
      */
-    public function getUserList(Request $request): UserCollection
+    public function getUserList(Request $request)
     {
         $isSearchQuery = (bool) ($request->query("searchValue") ?? "");
 
@@ -366,6 +366,37 @@ class UserController extends Controller
     }
 
     /**
+     * Gets user abilities for another target user.
+     */
+    public function getUserAbilitiesForUser(
+        Request $request,
+        string $userID,
+        string $targetID
+    ) {
+        $auth = User::user();
+        $user = User::query()->where("id", $userID)->first();
+
+        if (
+            !$user ||
+            !$auth->can(AbilityEnum::USER_ABILITY_VIEW->value, $user)
+        ) {
+            $this->failedAsNotFound("user");
+        }
+
+        $target = User::query()->where("id", $targetID)->first();
+        [$page, $limit] = $this->getPaginatorMetadata($request);
+
+        $abilities = $this->userService->getUserAbilitiesForUser(
+            $user,
+            $target,
+            $page,
+            $limit
+        );
+
+        return new AbilityCollection($abilities);
+    }
+
+    /**
      * Update user global abilities (applied at class level).
      */
     public function updateUserGlobalAbilities(
@@ -391,9 +422,9 @@ class UserController extends Controller
     }
 
     /**
-     * Update user abilities (applied at class level).
+     * Update user abilities against another user.
      */
-    public function updateUserAbilities(
+    public function updateUserAbilitiesForUser(
         UpdateUserAbilitiesRequest $request,
         string $userID,
         string $targetUserID
@@ -413,7 +444,11 @@ class UserController extends Controller
 
         $data = $request->validated();
 
-        $this->userService->updateUserAbilities($user, $targetUser, $data);
+        $this->userService->updateUserAbilitiesForUser(
+            $user,
+            $targetUser,
+            $data
+        );
 
         return $this->succeedWithStatus();
     }
