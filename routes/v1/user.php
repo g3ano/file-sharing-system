@@ -28,13 +28,17 @@ Route::prefix("users")
 
             Route::get("/{userID}/abilities", "getUserAbilities");
             Route::get("/{userID}/abilities/global", "getUserGlobalAbilities");
+            Route::get(
+                "/{userID}/abilities/{targetID}",
+                "getUserAbilitiesForUser"
+            );
             Route::post(
                 "/{userID}/abilities/global",
                 "updateUserGlobalAbilities"
             );
             Route::post(
                 "/{userID}/abilities/{targetUserID}",
-                "updateUserAbilities"
+                "updateUserAbilitiesForUser"
             );
             Route::get("/{userID}", "getUserByID");
         });

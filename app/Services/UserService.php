@@ -8,8 +8,10 @@ use App\Models\Workspace;
 use App\Enums\AbilityEnum;
 use App\Enums\ResourceEnum;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 use RuntimeException;
 use Silber\Bouncer\BouncerFacade;
+use Throwable;
 
 class UserService extends BaseService
 {
@@ -233,14 +235,20 @@ class UserService extends BaseService
         int $page = 1,
         int $limit = 10
     ): LengthAwarePaginator {
-        return $user
-            ->abilities()
+        /**
+         * @var LengthAwarePaginator
+         */
+        $abilities = $user
+            ->prepareAbilitiesBuilderFor()
             ->with("abilitable")
-            ->paginate(perPage: $limit, page: $page)
-            ->through(function ($item) {
-                $this->getUserAbilityContext($item);
-                return $item;
-            });
+            ->paginate(perPage: $limit, page: $page);
+
+        $abilities = $abilities->through(function ($item) {
+            $this->getUserAbilityContext($item);
+            return $item;
+        });
+
+        return $abilities;
     }
 
     /**
@@ -255,8 +263,8 @@ class UserService extends BaseService
          * @var LengthAwarePaginator
          */
         $users = $user
-            ->prepareAbilitiesBuilderFor()
-            ->whereNull("entity_id")
+            ->prepareAbilitiesBuilderFor(broad: true)
+            ->with("abilitable")
             ->paginate(perPage: $limit, page: $page);
 
         $users = $users->through(function ($item) {
@@ -268,27 +276,28 @@ class UserService extends BaseService
     }
 
     /**
-     * Gets paginated list of user workspaces abilities.
+     * Gets paginated list of user abilities against another user.
      */
-    public function getUserWorkspaceAbilities(
+    public function getUserAbilitiesForUser(
         User $user,
+        User $target,
         int $page = 1,
         int $limit = 10
     ): LengthAwarePaginator {
         /**
          * @var LengthAwarePaginator
          */
-        $users = $user
-            ->prepareAbilitiesBuilderFor()
-            ->whereNull("entity_id")
+        $abilities = $user
+            ->prepareAbilitiesBuilderFor($target)
+            ->with("abilitable")
             ->paginate(perPage: $limit, page: $page);
 
-        $users = $users->through(function ($item) {
+        $abilities = $abilities->through(function ($item) {
             $this->getUserAbilityContext($item);
             return $item;
         });
 
-        return $users;
+        return $abilities;
     }
 
     /**
@@ -314,7 +323,7 @@ class UserService extends BaseService
     /**
      * Update user abilities.
      */
-    public function updateUserAbilities(
+    public function updateUserAbilitiesForUser(
         User $user,
         User $target,
         array $data
@@ -334,8 +343,17 @@ class UserService extends BaseService
 
         $abilitiesToAdd = array_diff($abilitiesToAdd, $abilitiesToRemove);
 
-        BouncerFacade::allow($user)->to($abilitiesToAdd, $target);
-        BouncerFacade::disallow($user)->to($abilitiesToRemove, $target);
+        if (!empty($abilitiesToAdd)) {
+            BouncerFacade::disallow($user)->to($abilitiesToAdd, $target);
+            BouncerFacade::unforbid($user)->to($abilitiesToAdd, $target);
+            BouncerFacade::allow($user)->to($abilitiesToAdd, $target);
+        }
+
+        if (!empty($abilitiesToRemove)) {
+            BouncerFacade::disallow($user)->to($abilitiesToRemove, $target);
+            BouncerFacade::unforbid($user)->to($abilitiesToRemove, $target);
+            BouncerFacade::forbid($user)->to($abilitiesToRemove, $target);
+        }
     }
 
     /**
@@ -399,6 +417,8 @@ class UserService extends BaseService
 
     /**
      * Handle user abilities update addition action.
+     *
+     * @throws Throwable
      */
     protected function handleAddGlobalAbilitiesToUser(
         User $user,
@@ -406,7 +426,39 @@ class UserService extends BaseService
     ): void {
         foreach ($abilitiesToAdd as $type => $abilityNames) {
             if (!empty($abilityNames)) {
-                BouncerFacade::allow($user)->to($abilityNames, $type);
+                try {
+                    DB::beginTransaction();
+                    if (!empty($abilitiesToAdd)) {
+                        BouncerFacade::disallow($user)->to(
+                            $abilitiesToAdd,
+                            $type
+                        );
+                        BouncerFacade::unforbid($user)->to(
+                            $abilitiesToAdd,
+                            $type
+                        );
+                        BouncerFacade::allow($user)->to($abilitiesToAdd, $type);
+                    }
+
+                    if (!empty($abilitiesToRemove)) {
+                        BouncerFacade::disallow($user)->to(
+                            $abilitiesToRemove,
+                            $type
+                        );
+                        BouncerFacade::unforbid($user)->to(
+                            $abilitiesToRemove,
+                            $type
+                        );
+                        BouncerFacade::forbid($user)->to(
+                            $abilitiesToRemove,
+                            $type
+                        );
+                    }
+                    DB::commit();
+                } catch (Throwable $e) {
+                    DB::rollBack();
+                    $this->failedAtRuntime($e->getMessage());
+                }
             }
         }
     }
@@ -420,7 +472,7 @@ class UserService extends BaseService
     ): void {
         foreach ($abilitiesToRemove as $type => $abilityNames) {
             if (!empty($abilityNames)) {
-                BouncerFacade::disallow($user)->to($abilityNames, $type);
+                BouncerFacade::forbid($user)->to($abilityNames, $type);
             }
         }
     }

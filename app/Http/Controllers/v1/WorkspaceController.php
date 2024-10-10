@@ -318,7 +318,7 @@ class WorkspaceController extends Controller
         Request $request,
         string $workspaceID,
         string $userID
-    ): AbilityCollection {
+    ) {
         $auth = User::user();
         $user = User::query()->where("id", $userID)->first();
 

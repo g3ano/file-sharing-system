@@ -18,33 +18,41 @@ class AbilityResource extends BaseResource
     public function toArray(Request $request): array
     {
         return [
-            'type' => 'abilities',
-            'attributes' => $this->getAttributes([
-                'name' => $this->name,
-                'title' => $this->title,
-                'createdAt' => $this->created_at,
+            "type" => "abilities",
+            "attributes" => $this->getAttributes([
+                "name" => $this->name,
+                "title" => $this->title,
+                "forbidden" => $this->forbidden,
+                "createdAt" => $this->created_at,
             ]),
-            'relationships' => $this->getRelationships([
-                'abilitable' => $this->resolveMorphToManyResourceClass($this->whenLoaded('abilitable')),
+            "relationships" => $this->getRelationships([
+                "abilitable" => $this->resolveMorphToManyResourceClass(
+                    $this->whenLoaded("abilitable")
+                ),
             ]),
-            'meta' => $this->getMeta(),
+            "meta" => $this->getMeta(),
         ];
     }
 
     protected function getMeta(): array|MissingValue
     {
         $result = [];
-        $result['createdAt'] = $this->whenNotNull($this->created_at->format('F j, Y'));
+        $result["createdAt"] = $this->whenNotNull(
+            $this->created_at->format("F j, Y")
+        );
 
-        $result['isAppliesToAll'] = $this->whenNotNull($this->isAppliesToAll);
-        $result['isAppliesToInstance'] = $this->whenNotNull($this->isAppliesToInstance);
-        $result['appliesTo'] = $this->whenNotNull($this->appliesTo);
+        $result["isAppliesToAll"] = $this->whenNotNull($this->isAppliesToAll);
+        $result["isAppliesToInstance"] = $this->whenNotNull(
+            $this->isAppliesToInstance
+        );
+        $result["appliesTo"] = $this->whenNotNull($this->appliesTo);
 
         return $result ?: new MissingValue();
     }
 
-    protected function resolveMorphToManyResourceClass(Model|MissingValue|null $model = null): JsonResource|MissingValue
-    {
+    protected function resolveMorphToManyResourceClass(
+        Model|MissingValue|null $model = null
+    ): JsonResource|MissingValue {
         if (!$model || $model instanceof MissingValue) {
             return new MissingValue();
         }
