@@ -8,6 +8,9 @@ use Illuminate\Database\Eloquent\Builder;
 use Silber\Bouncer\Database\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Support\Facades\DB;
+
+use function Laravel\Prompts\select;
 
 trait HasAbilityForModel
 {
@@ -26,18 +29,16 @@ trait HasAbilityForModel
                 : get_class($model))
             : null;
 
-        $query = Ability::query()->whereIn("id", function (
-            QueryBuilder $query
-        ) use ($permissions) {
-            $query
-                ->select("ability_id")
-                ->from($permissions)
-                ->where("entity_id", $this->getKey())
-                ->where("entity_type", User::class);
-        });
+        $query = Ability::query()
+            ->join($permissions, "{$abilities}.id", "{$permissions}.ability_id")
+            ->where("{$permissions}.entity_id", $this->getKey())
+            ->where("{$permissions}.entity_type", User::class)
+            ->select(["{$abilities}.*", "{$permissions}.forbidden"]);
 
         if (!$model) {
-            return $query;
+            return $broad
+                ? $query->whereNull("{$abilities}.entity_id")
+                : $query;
         }
 
         if (!is_string($model)) {
