@@ -29,6 +29,9 @@ trait HasAbilityForModel
                 : get_class($model))
             : null;
 
+        /**
+         * @var Builder
+         */
         $query = Ability::query()
             ->join($permissions, "{$abilities}.id", "{$permissions}.ability_id")
             ->where("{$permissions}.entity_id", $this->getKey())
@@ -60,8 +63,11 @@ trait HasAbilityForModel
             return $query;
         }
 
-        $query->where("entity_type", $model);
+        $query->where("{$abilities}.entity_type", $model);
 
-        return $query;
+        //either return non-nullable entity_id records, or the opposite!
+        return $broad
+            ? $query->where("{$abilities}.entity_id", null)
+            : $query->where("{$abilities}.entity_id", "!=", null);
     }
 }
