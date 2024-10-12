@@ -23,6 +23,7 @@ use App\Http\Requests\v1\User\RemoveUserWorkspacesRequest;
 use App\Http\Requests\v1\User\UpdateUserGlobalAbilitiesRequest;
 use App\Models\Ability;
 use Illuminate\Database\Eloquent\Builder;
+use Silber\Bouncer\BouncerFacade;
 use Silber\Bouncer\Database\Models;
 
 class UserController extends Controller
@@ -36,9 +37,10 @@ class UserController extends Controller
     {
         $this->userService = $userService;
         $this->relationships = [];
-        $this->orderable = ["id", "createdAt", "firstName"];
+        $this->orderable = ["id", "createdAt", "firstName", "deletedAt"];
         $this->orderableMap = [
             "createdAt" => "created_at",
+            "deletedAt" => "deleted_at",
             "firstName" => "first_name",
         ];
     }
@@ -56,12 +58,12 @@ class UserController extends Controller
     /**
      * Get current **Authenticated** user
      */
-    public function getAuthUser(): UserResource
+    public function getAuthUser()
     {
         $auth = User::user();
         $auth->includeEmail = true;
 
-        if (!$auth || !$auth->can(AbilityEnum::VIEW->value, $auth)) {
+        if (!$auth) {
             $this->failedAsNotFound("user");
         }
 
@@ -77,6 +79,10 @@ class UserController extends Controller
     {
         $user = User::query()->where("id", $userID)->first();
         $auth = User::user();
+
+        if ($auth->is($user)) {
+            return $this->getAuthUser();
+        }
 
         if (!$user || !$auth->can(AbilityEnum::VIEW->value, $user)) {
             $this->failedAsNotFound("user");
@@ -150,8 +156,14 @@ class UserController extends Controller
     /**
      * Get paginated list of users.
      */
-    public function getDeletedUserList(Request $request): UserCollection
+    public function getDeletedUserList(Request $request)
     {
+        $isSearchQuery = (bool) ($request->query("searchValue") ?? "");
+
+        if ($isSearchQuery) {
+            return $this->searchDeletedUserList($request);
+        }
+
         $auth = User::user();
 
         if (!$auth || !$auth->can(AbilityEnum::LIST->value, User::class)) {
@@ -159,9 +171,15 @@ class UserController extends Controller
         }
 
         [$page, $limit] = $this->getPaginatorMetadata($request);
+        [$orderBy, $orderByDir] = $this->getOrderByMeta($request);
         $includeEmail = $request->boolean("includeEmail") ?? false;
 
-        $users = $this->userService->getUserDeletedList($page, $limit);
+        $users = $this->userService->getUserDeletedList(
+            $page,
+            $limit,
+            $orderBy,
+            $orderByDir
+        );
 
         $users = $users->through(function ($item) use ($auth, $includeEmail) {
             $item->includeEmail = $includeEmail;
@@ -173,7 +191,29 @@ class UserController extends Controller
     }
 
     /**
-     * Deletes user by ID.
+     * Get users count.
+     */
+    public function getDeletedUserListCount(): JsonResponse
+    {
+        $auth = User::user();
+
+        if (!$auth || !$auth->can(AbilityEnum::LIST->value, User::class)) {
+            $this->failedWithMessage(__("user.not_found"), 404);
+        }
+
+        $count = User::query()->onlyTrashed()->count();
+
+        return $this->succeed(
+            [
+                "data" => $count,
+            ],
+            200,
+            false
+        );
+    }
+
+    /**
+     * Soft-deletes user.
      */
     public function deleteUser(string $userID): JsonResponse
     {
@@ -189,7 +229,59 @@ class UserController extends Controller
                 "userID" => $user->id,
             ]);
 
-            $this->failedWithMessage(__("user.delete.soft"), 500);
+            $this->failedWithMessage(__("user.deleted.soft"), 500);
+        }
+
+        return $this->succeedWithStatus();
+    }
+
+    /**
+     * Restore soft-deleted user.
+     */
+    public function restoreUser(string $userID)
+    {
+        $auth = User::user();
+        /**
+         * @var User
+         */
+        $user = User::onlyTrashed()->where("id", $userID)->first();
+
+        if (!$user || !$auth->can(AbilityEnum::RESTORE->value, $user)) {
+            $this->failedAsNotFound("user");
+        }
+
+        if (!$user->restore()) {
+            Log::error("Failed to deleted user", [
+                "userID" => $user->id,
+            ]);
+
+            $this->failedWithMessage(__("user.deleted.restore"), 500);
+        }
+
+        return $this->succeedWithStatus();
+    }
+
+    /**
+     * Hard delete user.
+     */
+    public function forceDeleteUser(string $userID)
+    {
+        $auth = User::user();
+        /**
+         * @var User
+         */
+        $user = User::onlyTrashed()->where("id", $userID)->first();
+
+        if (!$user || !$auth->can(AbilityEnum::FORCE_DELETE->value, $user)) {
+            $this->failedAsNotFound("user");
+        }
+
+        if (!$user->forceDelete()) {
+            Log::error("Failed to deleted user", [
+                "userID" => $user->id,
+            ]);
+
+            $this->failedWithMessage(__("user.delete.force_delete"), 500);
         }
 
         return $this->succeedWithStatus();
@@ -217,14 +309,53 @@ class UserController extends Controller
         $includes = $this->getIncludedRelationships($request);
         $includeEmail = $request->boolean("includeEmail") ?? false;
 
-        if (!$auth) {
+        /**
+         * @var LengthAwarePaginator
+         */
+        $users = $this->userService->searchUserList(
+            $searchValue,
+            $page,
+            $limit,
+            $orderBy,
+            $orderByDir,
+            $includes
+        );
+
+        $users->through(function ($item) use ($auth, $includeEmail) {
+            $item->includeEmail = $includeEmail;
+            $this->userService->getUserCapabilitiesForUser($auth, $item);
+            return $item;
+        });
+
+        return new UserCollection($users);
+    }
+
+    /**
+     * Search deleted user list.
+     */
+    public function searchDeletedUserList(Request $request): UserCollection
+    {
+        $searchValue = $request->query("searchValue") ?? "";
+
+        if (!$searchValue) {
+            return $this->succeedWithPagination();
+        }
+
+        $auth = User::user();
+
+        if (!$auth || !$auth->can(AbilityEnum::LIST->value, User::class)) {
             $this->failedAsNotFound("user");
         }
+
+        [$page, $limit] = $this->getPaginatorMetadata($request);
+        [$orderBy, $orderByDir] = $this->getOrderByMeta($request);
+        $includes = $this->getIncludedRelationships($request);
+        $includeEmail = $request->boolean("includeEmail") ?? false;
 
         /**
          * @var LengthAwarePaginator
          */
-        $users = $this->userService->searchForUsers(
+        $users = $this->userService->searchDeletedUserList(
             $searchValue,
             $page,
             $limit,
@@ -355,11 +486,13 @@ class UserController extends Controller
         }
 
         [$page, $limit] = $this->getPaginatorMetadata($request);
+        $type = $request->query("type");
 
         $abilities = $this->userService->getUserGlobalAbilities(
             $user,
             $page,
-            $limit
+            $limit,
+            $type
         );
 
         return new AbilityCollection($abilities);
