@@ -15,27 +15,6 @@ use Throwable;
 
 class UserService extends BaseService
 {
-    public function searchForUsers(
-        string $searchValue,
-        int $page = 1,
-        int $limit = 10,
-        string $orderBy = "created_at",
-        string $orderByDir = "asc",
-        array $includes = []
-    ): LengthAwarePaginator {
-        $searchValue = "%{$searchValue}%";
-
-        return User::query()
-            ->with($includes)
-            ->whereAny(
-                ["first_name", "last_name", "email", "username"],
-                "ILIKE",
-                $searchValue
-            )
-            ->orderBy($orderBy, $orderByDir)
-            ->paginate(perPage: $limit, page: $page);
-    }
-
     /**
      * Gets authenticated user capabilities to a target user.
      */
@@ -52,30 +31,36 @@ class UserService extends BaseService
 
         if ($isAuth) {
             $capabilities = [
-                "users list" => $auth->can(
-                    AbilityEnum::LIST->value,
-                    User::class
-                ),
-                "users create" => $auth->can(
-                    AbilityEnum::CREATE->value,
-                    User::class
-                ),
-                "workspaces list" => $auth->can(
-                    AbilityEnum::LIST->value,
-                    Workspace::class
-                ),
-                "workspaces create" => $auth->can(
-                    AbilityEnum::CREATE->value,
-                    Workspace::class
-                ),
-                "projects list" => $auth->can(
-                    AbilityEnum::LIST->value,
-                    Project::class
-                ),
-                "projects list" => $auth->can(
-                    AbilityEnum::CREATE->value,
-                    Project::class
-                ),
+                ResourceEnum::USER->value => [
+                    AbilityEnum::LIST->value => $auth->can(
+                        AbilityEnum::LIST->value,
+                        User::class
+                    ),
+                    AbilityEnum::CREATE->value => $auth->can(
+                        AbilityEnum::CREATE->value,
+                        User::class
+                    ),
+                ],
+                ResourceEnum::WORKSPACE->value => [
+                    AbilityEnum::LIST->value => $auth->can(
+                        AbilityEnum::LIST->value,
+                        Workspace::class
+                    ),
+                    AbilityEnum::CREATE->value => $auth->can(
+                        AbilityEnum::CREATE->value,
+                        Workspace::class
+                    ),
+                ],
+                ResourceEnum::PROJECT->value => [
+                    AbilityEnum::LIST->value => $auth->can(
+                        AbilityEnum::LIST->value,
+                        Project::class
+                    ),
+                    AbilityEnum::CREATE->value => $auth->can(
+                        AbilityEnum::CREATE->value,
+                        Project::class
+                    ),
+                ],
             ];
         } else {
             $capabilities = [
@@ -122,10 +107,12 @@ class UserService extends BaseService
                     AbilityEnum::USER_WORKSPACE_REMOVE->value,
                     $target
                 ),
-                AbilityEnum::USER_PROJECT_LIST->value => $auth->can(
-                    AbilityEnum::USER_PROJECT_LIST->value,
-                    $target
-                ),
+                AbilityEnum::USER_PROJECT_LIST->value => $auth->is($target)
+                    ? true
+                    : $auth->can(
+                        AbilityEnum::USER_PROJECT_LIST->value,
+                        $target
+                    ),
                 AbilityEnum::USER_PROJECT_ADD->value => $auth->can(
                     AbilityEnum::USER_PROJECT_ADD->value,
                     $target
@@ -149,8 +136,9 @@ class UserService extends BaseService
     ): void {
         $additional = (array) $additional;
 
-        BouncerFacade::allow($registeredUser)->to(
-            [
+        BouncerFacade::allow($registeredUser)
+            ->toOwn($registeredUser)
+            ->to([
                 AbilityEnum::VIEW->value,
                 AbilityEnum::UPDATE->value,
                 AbilityEnum::DELETE->value,
@@ -159,13 +147,10 @@ class UserService extends BaseService
                 AbilityEnum::USER_WORKSPACE_LIST->value,
                 AbilityEnum::USER_PROJECT_LIST->value,
                 ...$additional,
-            ],
-            $registeredUser
-        );
+            ]);
         BouncerFacade::allow($registeredUser)->to(
             [
                 AbilityEnum::VIEW->value,
-
                 AbilityEnum::USER_ABILITY_VIEW->value,
                 ...$additional,
             ],
@@ -187,15 +172,62 @@ class UserService extends BaseService
             ->paginate(perPage: $limit, page: $page);
     }
 
+    public function searchUserList(
+        string $searchValue,
+        int $page = 1,
+        int $limit = 10,
+        string $orderBy = "created_at",
+        string $orderByDir = "asc",
+        array $includes = []
+    ): LengthAwarePaginator {
+        $searchValue = "%{$searchValue}%";
+
+        return User::query()
+            ->with($includes)
+            ->whereAny(
+                ["first_name", "last_name", "email", "username"],
+                "ILIKE",
+                $searchValue
+            )
+            ->orderBy($orderBy, $orderByDir)
+            ->paginate(perPage: $limit, page: $page);
+    }
+
     /**
      * Gets paginated list of deleted users.
      */
     public function getUserDeletedList(
         int $page = 1,
-        int $limit = 10
+        int $limit = 10,
+        string $orderBy = "created_at",
+        string $orderByDirection = "asc"
     ): LengthAwarePaginator {
         return User::onlyTrashed()
-            ->orderBy("created_at", "desc")
+            ->orderBy($orderBy, $orderByDirection)
+            ->paginate(perPage: $limit, page: $page);
+    }
+
+    /**
+     * Search deleted user list.
+     */
+    public function searchDeletedUserList(
+        string $searchValue,
+        int $page = 1,
+        int $limit = 10,
+        string $orderBy = "created_at",
+        string $orderByDir = "asc",
+        array $includes = []
+    ): LengthAwarePaginator {
+        $searchValue = "%{$searchValue}%";
+
+        return User::onlyTrashed()
+            ->with($includes)
+            ->whereAny(
+                ["first_name", "last_name", "email", "username"],
+                "ILIKE",
+                $searchValue
+            )
+            ->orderBy($orderBy, $orderByDir)
             ->paginate(perPage: $limit, page: $page);
     }
 
@@ -257,13 +289,18 @@ class UserService extends BaseService
     public function getUserGlobalAbilities(
         User $user,
         int $page = 1,
-        int $limit = 10
+        int $limit = 10,
+        ?string $type = null
     ): LengthAwarePaginator {
+        $type = ResourceEnum::tryFrom($type)
+            ? ResourceEnum::tryFrom($type)->class()
+            : $type;
+
         /**
          * @var LengthAwarePaginator
          */
         $users = $user
-            ->prepareAbilitiesBuilderFor(broad: true)
+            ->prepareAbilitiesBuilderFor($type, true)
             ->with("abilitable")
             ->paginate(perPage: $limit, page: $page);
 
@@ -424,40 +461,21 @@ class UserService extends BaseService
         User $user,
         array $abilitiesToAdd
     ): void {
+        if (empty($abilitiesToAdd)) {
+            return;
+        }
+
         foreach ($abilitiesToAdd as $type => $abilityNames) {
             if (!empty($abilityNames)) {
                 try {
                     DB::beginTransaction();
-                    if (!empty($abilitiesToAdd)) {
-                        BouncerFacade::disallow($user)->to(
-                            $abilitiesToAdd,
-                            $type
-                        );
-                        BouncerFacade::unforbid($user)->to(
-                            $abilitiesToAdd,
-                            $type
-                        );
-                        BouncerFacade::allow($user)->to($abilitiesToAdd, $type);
-                    }
-
-                    if (!empty($abilitiesToRemove)) {
-                        BouncerFacade::disallow($user)->to(
-                            $abilitiesToRemove,
-                            $type
-                        );
-                        BouncerFacade::unforbid($user)->to(
-                            $abilitiesToRemove,
-                            $type
-                        );
-                        BouncerFacade::forbid($user)->to(
-                            $abilitiesToRemove,
-                            $type
-                        );
-                    }
+                    BouncerFacade::unforbid($user)->to($abilityNames, $type);
+                    BouncerFacade::disallow($user)->to($abilityNames, $type);
+                    BouncerFacade::allow($user)->to($abilityNames, $type);
                     DB::commit();
                 } catch (Throwable $e) {
                     DB::rollBack();
-                    $this->failedAtRuntime($e->getMessage());
+                    $this->failedAtRuntime($e->getMessage(), $e->getCode());
                 }
             }
         }
@@ -470,9 +488,22 @@ class UserService extends BaseService
         User $user,
         array $abilitiesToRemove
     ): void {
+        if (empty($abilitiesToRemove)) {
+            return;
+        }
+
         foreach ($abilitiesToRemove as $type => $abilityNames) {
             if (!empty($abilityNames)) {
-                BouncerFacade::forbid($user)->to($abilityNames, $type);
+                try {
+                    DB::beginTransaction();
+                    BouncerFacade::unforbid($user)->to($abilityNames, $type);
+                    BouncerFacade::disallow($user)->to($abilityNames, $type);
+                    BouncerFacade::forbid($user)->to($abilityNames, $type);
+                    DB::commit();
+                } catch (Throwable $e) {
+                    DB::rollBack();
+                    $this->failedAtRuntime($e->getMessage(), $e->getCode());
+                }
             }
         }
     }
