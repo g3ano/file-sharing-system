@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\Ability;
+use App\Models\User;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Silber\Bouncer\BouncerFacade;
@@ -14,8 +15,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        if ($this->app->environment('local')) {
-            $this->app->register(\Laravel\Telescope\TelescopeServiceProvider::class);
+        if ($this->app->environment("local")) {
+            $this->app->register(
+                \Laravel\Telescope\TelescopeServiceProvider::class
+            );
             $this->app->register(TelescopeServiceProvider::class);
         }
     }
@@ -25,11 +28,16 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        ResetPassword::createUrlUsing(function (object $notifiable, string $token) {
-            return config('app.frontend_url') . "/password-reset/$token?email={$notifiable->getEmailForPasswordReset()}";
+        ResetPassword::createUrlUsing(function (
+            object $notifiable,
+            string $token
+        ) {
+            return config("app.frontend_url") .
+                "/password-reset/$token?email={$notifiable->getEmailForPasswordReset()}";
         });
 
         // BouncerFacade::cache();
         BouncerFacade::useAbilityModel(Ability::class);
+        BouncerFacade::ownedVia(User::class, "id");
     }
 }
