@@ -166,6 +166,14 @@ class WorkspaceService extends BaseService
                 AbilityEnum::FORCE_DELETE->value,
                 $workspace
             ),
+            AbilityEnum::USER_ABILITY_MANAGE->value => $auth->can(
+                AbilityEnum::USER_ABILITY_MANAGE->value,
+                $workspace
+            ),
+            AbilityEnum::USER_ABILITY_SPECIAL_MANAGE->value => $auth->can(
+                AbilityEnum::USER_ABILITY_SPECIAL_MANAGE->value,
+                $workspace
+            ),
             AbilityEnum::WORKSPACE_MEMBER_LIST->value => $auth->can(
                 AbilityEnum::WORKSPACE_MEMBER_LIST->value,
                 $workspace
@@ -176,10 +184,6 @@ class WorkspaceService extends BaseService
             ),
             AbilityEnum::WORKSPACE_MEMBER_REMOVE->value => $auth->can(
                 AbilityEnum::WORKSPACE_MEMBER_REMOVE->value,
-                $workspace
-            ),
-            AbilityEnum::WORKSPACE_MEMBER_ABILITY_MANAGE->value => $auth->can(
-                AbilityEnum::WORKSPACE_MEMBER_ABILITY_MANAGE->value,
                 $workspace
             ),
             AbilityEnum::WORKSPACE_PROJECT_LIST->value => $auth->can(
@@ -275,18 +279,32 @@ class WorkspaceService extends BaseService
         [
             "add" => $abilitiesToAdd,
             "remove" => $abilitiesToRemove,
+            "forbid" => $abilitiesToForbid,
         ] = $data;
 
-        if (empty($abilitiesToAdd) && empty($abilitiesToRemove)) {
+        if (
+            empty($abilitiesToAdd) &&
+            empty($abilitiesToRemove) &&
+            empty($abilitiesToForbid)
+        ) {
             return;
         }
 
         $abilitiesToAdd = array_diff($abilitiesToAdd, $abilitiesToRemove);
+        $abilitiesToAdd = array_diff($abilitiesToAdd, $abilitiesToForbid);
+        $abilitiesToRemove = array_diff($abilitiesToRemove, $abilitiesToForbid);
 
         try {
+            //Reset user abilities for given workspace
+            foreach (
+                [$abilitiesToAdd, $abilitiesToRemove, $abilitiesToForbid]
+                as $abilityGroup
+            ) {
+                BouncerFacade::disallow($user)->to($abilityGroup, $workspace);
+                BouncerFacade::unforbid($user)->to($abilityGroup, $workspace);
+            }
+
             if (!empty($abilitiesToAdd)) {
-                BouncerFacade::disallow($user)->to($abilitiesToAdd, $workspace);
-                BouncerFacade::unforbid($user)->to($abilitiesToAdd, $workspace);
                 BouncerFacade::allow($user)->to($abilitiesToAdd, $workspace);
             }
 
@@ -295,12 +313,11 @@ class WorkspaceService extends BaseService
                     $abilitiesToRemove,
                     $workspace
                 );
-                BouncerFacade::unforbid($user)->to(
-                    $abilitiesToRemove,
-                    $workspace
-                );
+            }
+
+            if (!empty($abilitiesToForbid)) {
                 BouncerFacade::forbid($user)->to(
-                    $abilitiesToRemove,
+                    $abilitiesToForbid,
                     $workspace
                 );
             }
