@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use RuntimeException;
 use Silber\Bouncer\Database\Ability as BouncerAbility;
 
 class Ability extends BouncerAbility
@@ -12,6 +14,6 @@ class Ability extends BouncerAbility
      */
     public function abilitable(): MorphTo
     {
-        return $this->morphTo(__FUNCTION__, 'entity_type', 'entity_id');
+        return $this->morphTo(__FUNCTION__, "entity_type", "entity_id");
     }
 }

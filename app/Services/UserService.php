@@ -7,6 +7,7 @@ use App\Models\Project;
 use App\Models\Workspace;
 use App\Enums\AbilityEnum;
 use App\Enums\ResourceEnum;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -84,10 +85,6 @@ class UserService extends BaseService
                     AbilityEnum::FORCE_DELETE->value,
                     $target
                 ),
-                AbilityEnum::USER_ABILITY_VIEW->value => $auth->can(
-                    AbilityEnum::USER_ABILITY_VIEW->value,
-                    $target
-                ),
                 AbilityEnum::USER_ABILITY_MANAGE->value =>
                     ($auth->can(
                         AbilityEnum::USER_ABILITY_MANAGE->value,
@@ -95,6 +92,15 @@ class UserService extends BaseService
                     ) &&
                         !$target->can("*", "*")) ||
                     ($target->can("*", "*") && $auth->can("*", "*")),
+                AbilityEnum::USER_ABILITY_SPECIAL_MANAGE->value => $target->can(
+                    "*",
+                    "*"
+                )
+                    ? $target->can("*", "*") && $auth->can("*", "*")
+                    : $auth->can(
+                        AbilityEnum::USER_ABILITY_SPECIAL_MANAGE->value,
+                        $target
+                    ),
                 AbilityEnum::USER_WORKSPACE_LIST->value => $auth->can(
                     AbilityEnum::USER_WORKSPACE_LIST->value,
                     $target
@@ -143,17 +149,12 @@ class UserService extends BaseService
                 AbilityEnum::UPDATE->value,
                 AbilityEnum::DELETE->value,
 
-                AbilityEnum::USER_ABILITY_VIEW->value,
                 AbilityEnum::USER_WORKSPACE_LIST->value,
                 AbilityEnum::USER_PROJECT_LIST->value,
                 ...$additional,
             ]);
         BouncerFacade::allow($registeredUser)->to(
-            [
-                AbilityEnum::VIEW->value,
-                AbilityEnum::USER_ABILITY_VIEW->value,
-                ...$additional,
-            ],
+            [AbilityEnum::VIEW->value, ...$additional],
             User::class
         );
     }
@@ -283,6 +284,34 @@ class UserService extends BaseService
         return $abilities;
     }
 
+    public function searchUserAbilities(
+        User $user,
+        string $searchValue,
+        int $page = 1,
+        int $limit = 10
+    ): LengthAwarePaginator {
+        $searchValue = "%{$searchValue}%";
+        /**
+         * @var LengthAwarePaginator
+         */
+        $abilities = $user
+            ->prepareAbilitiesBuilderFor()
+            // ->whereAny(
+            //     ["", "last_name", "email", "username"],
+            //     "ILIKE",
+            //     $searchValue
+            // )
+            ->with("abilitable")
+            ->paginate(perPage: $limit, page: $page);
+
+        $abilities = $abilities->through(function ($item) {
+            $this->getUserAbilityContext($item);
+            return $item;
+        });
+
+        return $abilities;
+    }
+
     /**
      * Gets paginated list of user global abilities.
      */
@@ -347,18 +376,24 @@ class UserService extends BaseService
         [
             "add" => $abilitiesToAdd,
             "remove" => $abilitiesToRemove,
+            "forbid" => $abilitiesToForbid,
         ] = $data;
 
-        if (empty($abilitiesToAdd) && empty($abilitiesToRemove)) {
+        if (
+            empty($abilitiesToAdd) &&
+            empty($abilitiesToRemove) &&
+            empty($abilitiesToForbid)
+        ) {
             return;
         }
 
         $this->handleAddGlobalAbilitiesToUser($user, $abilitiesToAdd);
         $this->handleRemoveGlobalAbilitiesFromUser($user, $abilitiesToRemove);
+        $this->handleForbidGlobalAbilitiesFromUser($user, $abilitiesToForbid);
     }
 
     /**
-     * Update user abilities.
+     * Update user abilities for another user.
      */
     public function updateUserAbilitiesForUser(
         User $user,
@@ -372,24 +407,44 @@ class UserService extends BaseService
         [
             "add" => $abilitiesToAdd,
             "remove" => $abilitiesToRemove,
+            "forbid" => $abilitiesToForbid,
         ] = $data;
 
-        if (empty($abilitiesToAdd) && empty($abilitiesToRemove)) {
+        if (
+            empty($abilitiesToAdd) &&
+            empty($abilitiesToRemove) &&
+            empty($abilitiesToForbid)
+        ) {
             return;
         }
 
         $abilitiesToAdd = array_diff($abilitiesToAdd, $abilitiesToRemove);
+        $abilitiesToAdd = array_diff($abilitiesToAdd, $abilitiesToForbid);
+        $abilitiesToRemove = array_diff($abilitiesToRemove, $abilitiesToForbid);
 
-        if (!empty($abilitiesToAdd)) {
-            BouncerFacade::disallow($user)->to($abilitiesToAdd, $target);
-            BouncerFacade::unforbid($user)->to($abilitiesToAdd, $target);
-            BouncerFacade::allow($user)->to($abilitiesToAdd, $target);
-        }
+        try {
+            //Reset user given abilities for given user
+            foreach (
+                [$abilitiesToAdd, $abilitiesToRemove, $abilitiesToForbid]
+                as $abilityGroup
+            ) {
+                BouncerFacade::disallow($user)->to($abilityGroup, $target);
+                BouncerFacade::unforbid($user)->to($abilityGroup, $target);
+            }
 
-        if (!empty($abilitiesToRemove)) {
-            BouncerFacade::disallow($user)->to($abilitiesToRemove, $target);
-            BouncerFacade::unforbid($user)->to($abilitiesToRemove, $target);
-            BouncerFacade::forbid($user)->to($abilitiesToRemove, $target);
+            if (!empty($abilitiesToAdd)) {
+                BouncerFacade::allow($user)->to($abilitiesToAdd, $target);
+            }
+
+            if (!empty($abilitiesToRemove)) {
+                BouncerFacade::disallow($user)->to($abilitiesToRemove, $target);
+            }
+
+            if (!empty($abilitiesToForbid)) {
+                BouncerFacade::forbid($user)->to($abilitiesToForbid, $target);
+            }
+        } catch (Throwable $e) {
+            $this->failedAtRuntime($e->getMessage(), $e->getCode());
         }
     }
 
@@ -405,21 +460,42 @@ class UserService extends BaseService
             );
         }, $abilitiesData);
 
-        $this->removeDuplicateAbilitiesFromData($abilitiesData);
+        $this->removeDuplicateAbilitiesGlobalFromData($abilitiesData);
     }
 
     /**
      * Remove duplicate abilities from update user global abilities
      * data groups.
+     *
      * @param array<int,mixed> $data
      */
-    protected function removeDuplicateAbilitiesFromData(array &$data): void
-    {
+    protected function removeDuplicateAbilitiesGlobalFromData(
+        array &$data
+    ): void {
+        //Removes any duplicate abilities between `add`, `remove`
+        //and `forbid` groups from `add` group
         foreach ($data["add"] as $type => $abilities) {
             if (array_key_exists($type, $data["remove"])) {
                 $data["add"][$type] = array_diff(
                     $abilities,
                     $data["remove"][$type]
+                );
+            }
+            if (array_key_exists($type, $data["forbid"])) {
+                $data["add"][$type] = array_diff(
+                    $abilities,
+                    $data["forbid"][$type]
+                );
+            }
+        }
+
+        //Removes any duplicate abilities between `remove`
+        //and `forbid` groups from `remove` group
+        foreach ($data["remove"] as $type => $abilities) {
+            if (array_key_exists($type, $data["forbid"])) {
+                $data["remove"][$type] = array_diff(
+                    $abilities,
+                    $data["forbid"][$type]
                 );
             }
         }
@@ -453,7 +529,7 @@ class UserService extends BaseService
     }
 
     /**
-     * Handle user abilities update addition action.
+     * Handle user global abilities update addition action.
      *
      * @throws Throwable
      */
@@ -482,7 +558,7 @@ class UserService extends BaseService
     }
 
     /**
-     * Handle user abilities update removal action.
+     * Handle user global abilities update removal action.
      */
     protected function handleRemoveGlobalAbilitiesFromUser(
         User $user,
@@ -493,6 +569,32 @@ class UserService extends BaseService
         }
 
         foreach ($abilitiesToRemove as $type => $abilityNames) {
+            if (!empty($abilityNames)) {
+                try {
+                    DB::beginTransaction();
+                    BouncerFacade::unforbid($user)->to($abilityNames, $type);
+                    BouncerFacade::disallow($user)->to($abilityNames, $type);
+                    DB::commit();
+                } catch (Throwable $e) {
+                    DB::rollBack();
+                    $this->failedAtRuntime($e->getMessage(), $e->getCode());
+                }
+            }
+        }
+    }
+
+    /**
+     * Handle user global abilities update forbid action.
+     */
+    protected function handleForbidGlobalAbilitiesFromUser(
+        User $user,
+        array $abilitiesToForbid
+    ): void {
+        if (empty($abilitiesToForbid)) {
+            return;
+        }
+
+        foreach ($abilitiesToForbid as $type => $abilityNames) {
             if (!empty($abilityNames)) {
                 try {
                     DB::beginTransaction();

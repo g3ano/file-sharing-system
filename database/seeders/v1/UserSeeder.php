@@ -36,13 +36,18 @@ class UserSeeder extends Seeder
             "password" => Hash::make("manager@example.com"),
         ]);
 
-        BouncerFacade::allow($admin)->everything();
-        BouncerFacade::allow($manager)->to(
+        BouncerFacade::allow($admin)->to(
             [
                 AbilityEnum::LIST->value,
                 AbilityEnum::VIEW->value,
                 AbilityEnum::CREATE->value,
                 AbilityEnum::UPDATE->value,
+                AbilityEnum::RESTORE->value,
+                AbilityEnum::DELETE->value,
+                AbilityEnum::FORCE_DELETE->value,
+
+                AbilityEnum::USER_ABILITY_MANAGE->value,
+                AbilityEnum::USER_ABILITY_SPECIAL_MANAGE->value,
 
                 AbilityEnum::USER_WORKSPACE_LIST->value,
                 AbilityEnum::USER_WORKSPACE_ADD->value,
@@ -50,8 +55,47 @@ class UserSeeder extends Seeder
                 AbilityEnum::USER_PROJECT_LIST->value,
                 AbilityEnum::USER_PROJECT_ADD->value,
                 AbilityEnum::USER_PROJECT_REMOVE->value,
-                AbilityEnum::USER_ABILITY_VIEW->value,
+            ],
+            User::class
+        );
+        BouncerFacade::allow($admin)->to(
+            [
+                AbilityEnum::LIST->value,
+                AbilityEnum::VIEW->value,
+                AbilityEnum::CREATE->value,
+                AbilityEnum::UPDATE->value,
+                AbilityEnum::RESTORE->value,
+                AbilityEnum::DELETE->value,
+                AbilityEnum::FORCE_DELETE->value,
+
                 AbilityEnum::USER_ABILITY_MANAGE->value,
+                AbilityEnum::USER_ABILITY_SPECIAL_MANAGE->value,
+
+                AbilityEnum::WORKSPACE_MEMBER_LIST->value,
+                AbilityEnum::WORKSPACE_MEMBER_ADD->value,
+                AbilityEnum::WORKSPACE_MEMBER_REMOVE->value,
+                AbilityEnum::WORKSPACE_PROJECT_LIST->value,
+                AbilityEnum::WORKSPACE_PROJECT_ADD->value,
+                AbilityEnum::WORKSPACE_PROJECT_REMOVE->value,
+            ],
+            Workspace::class
+        );
+
+        BouncerFacade::allow($manager)->to(
+            [
+                AbilityEnum::LIST->value,
+                AbilityEnum::VIEW->value,
+                AbilityEnum::CREATE->value,
+                AbilityEnum::UPDATE->value,
+
+                AbilityEnum::USER_ABILITY_MANAGE->value,
+
+                AbilityEnum::USER_WORKSPACE_LIST->value,
+                AbilityEnum::USER_WORKSPACE_ADD->value,
+                AbilityEnum::USER_WORKSPACE_REMOVE->value,
+                AbilityEnum::USER_PROJECT_LIST->value,
+                AbilityEnum::USER_PROJECT_ADD->value,
+                AbilityEnum::USER_PROJECT_REMOVE->value,
             ],
             User::class
         );
@@ -62,10 +106,11 @@ class UserSeeder extends Seeder
                 AbilityEnum::CREATE->value,
                 AbilityEnum::UPDATE->value,
 
+                AbilityEnum::USER_ABILITY_MANAGE->value,
+
                 AbilityEnum::WORKSPACE_MEMBER_LIST->value,
                 AbilityEnum::WORKSPACE_MEMBER_ADD->value,
                 AbilityEnum::WORKSPACE_MEMBER_REMOVE->value,
-                AbilityEnum::WORKSPACE_MEMBER_ABILITY_MANAGE->value,
                 AbilityEnum::WORKSPACE_PROJECT_LIST->value,
                 AbilityEnum::WORKSPACE_PROJECT_ADD->value,
                 AbilityEnum::WORKSPACE_PROJECT_REMOVE->value,
