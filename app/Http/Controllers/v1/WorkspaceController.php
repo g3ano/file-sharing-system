@@ -322,7 +322,7 @@ class WorkspaceController extends Controller
         $auth = User::user();
         $user = User::query()->where("id", $userID)->first();
 
-        if (!$auth->can(AbilityEnum::USER_ABILITY_VIEW->value, $user)) {
+        if (!$user || !$auth) {
             $this->failedAsNotFound("user");
         }
 
@@ -372,13 +372,8 @@ class WorkspaceController extends Controller
 
         $auth = User::user();
 
-        if (
-            !$auth->can(
-                AbilityEnum::WORKSPACE_MEMBER_ABILITY_MANAGE->value,
-                $workspace
-            ) ||
-            ($member->can("*", "*") && !$auth->can("*", "*"))
-        ) {
+        //Deny trying to update user with higher abilities
+        if ($member->can("*", "*") && !$auth->can("*", "*")) {
             $this->failedAsNotFound("user");
         }
 

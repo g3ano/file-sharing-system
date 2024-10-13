@@ -18,10 +18,12 @@ class UpdateWorkspaceMemberAbilitiesRequest extends BaseRequest
         AbilityEnum::RESTORE->value,
         AbilityEnum::FORCE_DELETE->value,
 
+        AbilityEnum::USER_ABILITY_MANAGE->value,
+        AbilityEnum::USER_ABILITY_SPECIAL_MANAGE->value,
+
         AbilityEnum::WORKSPACE_MEMBER_LIST->value,
         AbilityEnum::WORKSPACE_MEMBER_ADD->value,
         AbilityEnum::WORKSPACE_MEMBER_REMOVE->value,
-        AbilityEnum::WORKSPACE_MEMBER_ABILITY_MANAGE->value,
         AbilityEnum::WORKSPACE_PROJECT_LIST->value,
         AbilityEnum::WORKSPACE_PROJECT_ADD->value,
         AbilityEnum::WORKSPACE_PROJECT_REMOVE->value,
@@ -43,13 +45,26 @@ class UpdateWorkspaceMemberAbilitiesRequest extends BaseRequest
     public function rules(): array
     {
         return [
-            'remove' => ['bail', 'present', 'array'],
-            'remove.*' => [
-                'bail', 'required', 'string', Rule::in($this->validAbilities),
+            "remove" => ["bail", "present", "array"],
+            "remove.*" => [
+                "bail",
+                "required",
+                "string",
+                Rule::in($this->validAbilities),
             ],
-            'add' => ['bail', 'present', 'array'],
-            'add.*' => [
-                'bail', 'required', 'string', Rule::in($this->validAbilities),
+            "add" => ["bail", "present", "array"],
+            "add.*" => [
+                "bail",
+                "required",
+                "string",
+                Rule::in($this->validAbilities),
+            ],
+            "forbid" => ["bail", "present", "array"],
+            "forbid.*" => [
+                "bail",
+                "required",
+                "string",
+                Rule::in($this->validAbilities),
             ],
         ];
     }
@@ -57,8 +72,8 @@ class UpdateWorkspaceMemberAbilitiesRequest extends BaseRequest
     public function attributes(): array
     {
         return [
-            'add.*' => 'ability to add',
-            'remove.*' => 'ability to remove',
+            "add.*" => "ability to add",
+            "remove.*" => "ability to remove",
         ];
     }
 }

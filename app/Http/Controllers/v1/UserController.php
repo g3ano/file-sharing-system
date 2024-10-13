@@ -456,10 +456,7 @@ class UserController extends Controller
         $user = User::query()->where("id", $userID)->first();
         $auth = User::user();
 
-        if (
-            !$user ||
-            !$auth->can(AbilityEnum::USER_ABILITY_VIEW->value, $user)
-        ) {
+        if (!$user) {
             $this->failedAsNotFound("user");
         }
 
@@ -478,10 +475,7 @@ class UserController extends Controller
         $user = User::query()->where("id", $userID)->first();
         $auth = User::user();
 
-        if (
-            !$user ||
-            !$auth->can(AbilityEnum::USER_ABILITY_VIEW->value, $user)
-        ) {
+        if (!$user) {
             $this->failedAsNotFound("user");
         }
 
@@ -509,10 +503,7 @@ class UserController extends Controller
         $auth = User::user();
         $user = User::query()->where("id", $userID)->first();
 
-        if (
-            !$user ||
-            !$auth->can(AbilityEnum::USER_ABILITY_VIEW->value, $user)
-        ) {
+        if (!$user) {
             $this->failedAsNotFound("user");
         }
 

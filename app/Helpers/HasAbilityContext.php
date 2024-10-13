@@ -12,10 +12,10 @@ trait HasAbilityContext
     public function getUserAbilityContext(Ability &$ability)
     {
         $appliesTo = $ability->abilitable;
-        $parentClassBasename = class_basename($ability->entity_type);
+        $parentClassBasename = class_basename($ability->entity_type) ?? null;
 
-        $ability->isAppliesToInstance = (bool) $appliesTo;
-        $ability->isAppliesToAll = !(bool) $appliesTo;
+        $ability->isAppliesToInstance = (bool) $appliesTo?->id;
+        $ability->isAppliesToAll = !(bool) $appliesTo?->id;
         $ability->appliesTo = strtolower($parentClassBasename);
     }
 }

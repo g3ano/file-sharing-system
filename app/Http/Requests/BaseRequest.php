@@ -5,7 +5,6 @@ namespace App\Http\Requests;
 use App\Helpers\HasResponse;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Facades\Log;
 
 class BaseRequest extends FormRequest
 {
@@ -15,9 +14,7 @@ class BaseRequest extends FormRequest
 
     protected function prepareForValidation()
     {
-        $this->merge(
-            $this->formatPreValidation($this->all())
-        );
+        $this->merge($this->formatPreValidation($this->all()));
     }
 
     protected function failedValidation(Validator $validator)
@@ -26,18 +23,22 @@ class BaseRequest extends FormRequest
         $result = [];
 
         foreach ($errors as $column => $errorsArr) {
-            $isNested = str_contains($column, '.');
+            $isNested = str_contains($column, ".");
 
-            $column = preg_replace_callback('/(_)(.)/', function ($groups) {
-                return strtoupper($groups[2]);
-            }, $column);
+            $column = preg_replace_callback(
+                "/(_)(.)/",
+                function ($groups) {
+                    return strtoupper($groups[2]);
+                },
+                $column
+            );
 
             if (!$isNested) {
                 $result[$column] = $errorsArr[0];
                 continue;
             }
 
-            $columnArr = explode('.', $column);
+            $columnArr = explode(".", $column);
 
             $result = $this->nestArr($columnArr, $errorsArr[0]);
         }
@@ -66,13 +67,7 @@ class BaseRequest extends FormRequest
                 $result[] = null;
             }
 
-            $result[] = empty($arr)
-                ? $message
-                : $this->nestArr($arr, $message);
-
-            Log::info('', [
-                'result' => $result,
-            ]);
+            $result[] = empty($arr) ? $message : $this->nestArr($arr, $message);
 
             return $result;
         }
@@ -90,7 +85,7 @@ class BaseRequest extends FormRequest
         $result = [];
 
         foreach ($arr as $column => $value) {
-            $key = strtolower(preg_replace('/([A-Z])/', '_$0', $column));
+            $key = strtolower(preg_replace("/([A-Z])/", '_$0', $column));
             $result[$key] = is_array($value)
                 ? $this->formatPreValidation($value)
                 : $value;

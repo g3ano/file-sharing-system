@@ -18,8 +18,8 @@ class UpdateUserAbilitiesRequest extends BaseRequest
         AbilityEnum::RESTORE->value,
         AbilityEnum::FORCE_DELETE->value,
 
-        AbilityEnum::USER_ABILITY_VIEW->value,
         AbilityEnum::USER_ABILITY_MANAGE->value,
+        AbilityEnum::USER_ABILITY_SPECIAL_MANAGE->value,
         AbilityEnum::USER_WORKSPACE_LIST->value,
         AbilityEnum::USER_WORKSPACE_ADD->value,
         AbilityEnum::USER_WORKSPACE_REMOVE->value,
@@ -44,13 +44,26 @@ class UpdateUserAbilitiesRequest extends BaseRequest
     public function rules(): array
     {
         return [
-            'remove' => ['bail', 'present', 'array'],
-            'remove.*' => [
-                'bail', 'required', 'string', Rule::in($this->validAbilities),
+            "remove" => ["bail", "present", "array"],
+            "remove.*" => [
+                "bail",
+                "required",
+                "string",
+                Rule::in($this->validAbilities),
             ],
-            'add' => ['bail', 'present', 'array'],
-            'add.*' => [
-                'bail', 'required', 'string', Rule::in($this->validAbilities),
+            "add" => ["bail", "present", "array"],
+            "add.*" => [
+                "bail",
+                "required",
+                "string",
+                Rule::in($this->validAbilities),
+            ],
+            "forbid" => ["bail", "present", "array"],
+            "forbid.*" => [
+                "bail",
+                "required",
+                "string",
+                Rule::in($this->validAbilities),
             ],
         ];
     }
@@ -58,12 +71,15 @@ class UpdateUserAbilitiesRequest extends BaseRequest
     public function attributes(): array
     {
         return [
-            'add.*' => 'entries to add',
-            'add.*.name' => 'name',
-            'add.*.type' => 'type',
-            'remove.*' => 'entries to remove',
-            'remove.*.name' => 'name',
-            'remove.*.type' => 'type',
+            "add.*" => "entries to add",
+            "add.*.name" => "name",
+            "add.*.type" => "type",
+            "remove.*" => "entries to remove",
+            "remove.*.name" => "name",
+            "remove.*.type" => "type",
+            "forbid.*" => "entries to forbid",
+            "forbid.*.name" => "name",
+            "forbid.*.type" => "type",
         ];
     }
 }
