@@ -80,10 +80,6 @@ class UserController extends Controller
         $user = User::query()->where("id", $userID)->first();
         $auth = User::user();
 
-        if ($auth->is($user)) {
-            return $this->getAuthUser();
-        }
-
         if (!$user || !$auth->can(AbilityEnum::VIEW->value, $user)) {
             $this->failedAsNotFound("user");
         }
