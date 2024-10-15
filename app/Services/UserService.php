@@ -85,22 +85,14 @@ class UserService extends BaseService
                     AbilityEnum::FORCE_DELETE->value,
                     $target
                 ),
-                AbilityEnum::USER_ABILITY_MANAGE->value =>
-                    ($auth->can(
-                        AbilityEnum::USER_ABILITY_MANAGE->value,
-                        $target
-                    ) &&
-                        !$target->can("*", "*")) ||
-                    ($target->can("*", "*") && $auth->can("*", "*")),
-                AbilityEnum::USER_ABILITY_SPECIAL_MANAGE->value => $target->can(
-                    "*",
-                    "*"
-                )
-                    ? $target->can("*", "*") && $auth->can("*", "*")
-                    : $auth->can(
-                        AbilityEnum::USER_ABILITY_SPECIAL_MANAGE->value,
-                        $target
-                    ),
+                AbilityEnum::USER_ABILITY_MANAGE->value => $auth->can(
+                    AbilityEnum::USER_ABILITY_MANAGE->value,
+                    $target
+                ),
+                AbilityEnum::USER_ABILITY_SPECIAL_MANAGE->value => $auth->can(
+                    AbilityEnum::USER_ABILITY_SPECIAL_MANAGE->value,
+                    $target
+                ),
                 AbilityEnum::USER_WORKSPACE_LIST->value => $auth->can(
                     AbilityEnum::USER_WORKSPACE_LIST->value,
                     $target
@@ -142,9 +134,8 @@ class UserService extends BaseService
     ): void {
         $additional = (array) $additional;
 
-        BouncerFacade::allow($registeredUser)
-            ->toOwn($registeredUser)
-            ->to([
+        BouncerFacade::allow($registeredUser)->to(
+            [
                 AbilityEnum::VIEW->value,
                 AbilityEnum::UPDATE->value,
                 AbilityEnum::DELETE->value,
@@ -152,7 +143,9 @@ class UserService extends BaseService
                 AbilityEnum::USER_WORKSPACE_LIST->value,
                 AbilityEnum::USER_PROJECT_LIST->value,
                 ...$additional,
-            ]);
+            ],
+            $registeredUser
+        );
         BouncerFacade::allow($registeredUser)->to(
             [AbilityEnum::VIEW->value, ...$additional],
             User::class
@@ -399,7 +392,7 @@ class UserService extends BaseService
         User $user,
         User $target,
         array $data
-    ): void {
+    ) {
         if (empty($data)) {
             return;
         }

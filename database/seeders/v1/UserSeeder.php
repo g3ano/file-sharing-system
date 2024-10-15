@@ -99,6 +99,13 @@ class UserSeeder extends Seeder
             ],
             User::class
         );
+        BouncerFacade::forbid($manager)->to(
+            [
+                AbilityEnum::USER_ABILITY_MANAGE->value,
+                AbilityEnum::UPDATE->value,
+            ],
+            $admin
+        );
         BouncerFacade::allow($manager)->to(
             [
                 AbilityEnum::LIST->value,
