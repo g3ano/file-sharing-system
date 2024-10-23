@@ -18,6 +18,7 @@ class AbilityResource extends BaseResource
     public function toArray(Request $request): array
     {
         return [
+            "id" => $this->id,
             "type" => "abilities",
             "attributes" => $this->getAttributes([
                 "name" => $this->name,
