@@ -21,10 +21,6 @@ use App\Http\Requests\v1\User\AddUserWorkspacesRequest;
 use App\Http\Requests\v1\User\UpdateUserAbilitiesRequest;
 use App\Http\Requests\v1\User\RemoveUserWorkspacesRequest;
 use App\Http\Requests\v1\User\UpdateUserGlobalAbilitiesRequest;
-use App\Models\Ability;
-use Illuminate\Database\Eloquent\Builder;
-use Silber\Bouncer\BouncerFacade;
-use Silber\Bouncer\Database\Models;
 
 class UserController extends Controller
 {
@@ -449,8 +445,13 @@ class UserController extends Controller
      */
     public function getUserAbilities(Request $request, string $userID)
     {
+        $isSearchQuery = (bool) ($request->query("searchValue") ?? "");
+
+        if ($isSearchQuery) {
+            return $this->searchUserAbilities($request, $userID);
+        }
+
         $user = User::query()->where("id", $userID)->first();
-        $auth = User::user();
 
         if (!$user) {
             $this->failedAsNotFound("user");
@@ -463,13 +464,36 @@ class UserController extends Controller
         return new AbilityCollection($abilities);
     }
 
+    /**
+     * Search user abilities.
+     */
+    public function searchUserAbilities(Request $request, string $userID)
+    {
+        $searchValue = $request->query("searchValue") ?? "";
+
+        if (!$searchValue) {
+            return $this->succeedWithPagination();
+        }
+
+        $user = User::query()->where("id", $userID)->first();
+
+        if (!$user) {
+            $this->failedAsNotFound("user");
+        }
+
+        [$page, $limit] = $this->getPaginatorMetadata($request);
+
+        $abilities = $this->userService->searchUserAbilities($user, $searchValue, $page, $limit);
+
+        return new AbilityCollection($abilities);
+    }
+
     /*
      * Get user global abilities (abilities applies class level).
      */
     public function getUserGlobalAbilities(Request $request, string $userID)
     {
         $user = User::query()->where("id", $userID)->first();
-        $auth = User::user();
 
         if (!$user) {
             $this->failedAsNotFound("user");
@@ -496,7 +520,6 @@ class UserController extends Controller
         string $userID,
         string $targetID
     ) {
-        $auth = User::user();
         $user = User::query()->where("id", $userID)->first();
 
         if (!$user) {

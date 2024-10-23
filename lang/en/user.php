@@ -13,4 +13,7 @@ return [
         "restore" => "Failed to restore deleted user.",
         "force_delete" => "Failed to force delete deleted user.",
     ],
+    "search" => [
+        "not_found" => "no search result is found",
+    ],
 ];

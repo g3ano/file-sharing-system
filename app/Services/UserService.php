@@ -12,6 +12,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 use Silber\Bouncer\BouncerFacade;
+use Silber\Bouncer\Database\Models;
 use Throwable;
 
 class UserService extends BaseService
@@ -39,6 +40,15 @@ class UserService extends BaseService
                     ),
                     AbilityEnum::CREATE->value => $auth->can(
                         AbilityEnum::CREATE->value,
+                        User::class
+                    ),
+                    AbilityEnum::USER_ABILITY_MANAGE->value => $auth->can(
+                        AbilityEnum::USER_ABILITY_MANAGE->value,
+                        User::class
+                    ),
+                    AbilityEnum::USER_ABILITY_SPECIAL_MANAGE
+                        ->value => $auth->can(
+                        AbilityEnum::USER_ABILITY_SPECIAL_MANAGE->value,
                         User::class
                     ),
                 ],
@@ -179,7 +189,13 @@ class UserService extends BaseService
         return User::query()
             ->with($includes)
             ->whereAny(
-                ["first_name", "last_name", "email", "username"],
+                [
+                    "first_name",
+                    "last_name",
+                    "email",
+                    "username",
+                    DB::raw("CONCAT(first_name, ' ', last_name)"),
+                ],
                 "ILIKE",
                 $searchValue
             )
@@ -284,17 +300,19 @@ class UserService extends BaseService
         int $limit = 10
     ): LengthAwarePaginator {
         $searchValue = "%{$searchValue}%";
+        $abilities = Models::table("abilities");
+
         /**
          * @var LengthAwarePaginator
          */
         $abilities = $user
             ->prepareAbilitiesBuilderFor()
-            // ->whereAny(
-            //     ["", "last_name", "email", "username"],
-            //     "ILIKE",
-            //     $searchValue
-            // )
             ->with("abilitable")
+            ->whereAny(
+                ["{$abilities}.name", "{$abilities}.title", "{$abilities}.entity_type"],
+                "ILIKE",
+                $searchValue
+            )
             ->paginate(perPage: $limit, page: $page);
 
         $abilities = $abilities->through(function ($item) {
@@ -513,9 +531,7 @@ class UserService extends BaseService
                 array_unique(array_column($abilitiesByType, "name"))
             );
 
-            $formattedAbilities[
-                ResourceEnum::from($entityType)->class()
-            ] = $uniqueAbilitiesNamesByType;
+            $formattedAbilities[ResourceEnum::from($entityType)->class()] = $uniqueAbilitiesNamesByType;
         }
 
         return $formattedAbilities;
