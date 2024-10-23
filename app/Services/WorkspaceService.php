@@ -93,22 +93,34 @@ class WorkspaceService extends BaseService
     public function getWorkspaceList(
         string|int $page,
         string|int $limit,
-        ?string $searchValue = null,
+        string $orderBy = "created_at",
+        string $orderByDir = "asc",
         array $includes = []
-    ) {
-        $query = Workspace::query()->with($includes)->select("workspaces.*");
+    ): LengthAwarePaginator {
+        return Workspace::query()
+            ->with($includes)
+            ->select("workspaces.*")
+            ->orderBy($orderBy, $orderByDir)
+            ->paginate(perPage: $limit, page: $page);
+    }
 
-        if ($searchValue) {
-            $searchValue = "%$searchValue%";
-            $query = $query->whereAny(
-                ["name", "description"],
-                "ILIKE",
-                $searchValue
-            );
-        }
+    /**
+     * Search workspace list
+     */
+    public function searchWorkspaceList(
+        string $searchValue,
+        int $page = 1,
+        int $limit = 10,
+        string $orderBy = "created_at",
+        string $orderByDir = "asc",
+        array $includes = []
+    ): LengthAwarePaginator {
+        $searchValue = "%{$searchValue}%";
 
-        return $query
-            ->orderBy("created_at")
+        return Workspace::query()
+            ->with($includes)
+            ->whereAny(["name", "description"], "ILIKE", $searchValue)
+            ->orderBy($orderBy, $orderByDir)
             ->paginate(perPage: $limit, page: $page);
     }
 

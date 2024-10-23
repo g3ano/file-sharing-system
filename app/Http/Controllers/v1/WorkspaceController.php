@@ -32,6 +32,10 @@ class WorkspaceController extends Controller
     {
         $this->workspaceService = $workspaceService;
         $this->relationships = ["owner", "members"];
+        $this->orderable = ["id", "createdAt", "name", "description"];
+        $this->orderableMap = [
+            "createdAt" => "created_at",
+        ];
     }
 
     /**
@@ -91,10 +95,11 @@ class WorkspaceController extends Controller
      */
     public function getWorkspaceList(Request $request): WorkspaceCollection
     {
-        $page = $request->get("page") ?? $this->page;
-        $limit = $request->get("limit") ?? $this->limit;
-        $searchValue = $request->query("searchValue") ?? "";
-        $includes = $this->getIncludedRelationships($request);
+        $isSearchQuery = (bool) ($request->query("searchValue") ?? "");
+
+        if ($isSearchQuery) {
+            return $this->searchWorkspaceList($request);
+        }
 
         $auth = User::user();
 
@@ -102,13 +107,15 @@ class WorkspaceController extends Controller
             $this->failedAsNotFound("workspace");
         }
 
-        /**
-         * @var LengthAwarePaginator
-         */
+        [$page, $limit] = $this->getPaginatorMetadata($request);
+        [$orderBy, $orderByDir] = $this->getOrderByMeta($request);
+        $includes = $this->getIncludedRelationships($request);
+
         $workspaces = $this->workspaceService->getWorkspaceList(
             $page,
             $limit,
-            $searchValue,
+            $orderBy,
+            $orderByDir,
             $includes
         );
 
@@ -123,6 +130,71 @@ class WorkspaceController extends Controller
         });
 
         return new WorkspaceCollection($workspaces);
+    }
+
+    /**
+     * Search workspace list.
+     */
+    public function searchWorkspaceList(Request $request): WorkspaceCollection
+    {
+        $searchValue = $request->query("searchValue") ?? "";
+
+        if (!$searchValue) {
+            return $this->succeedWithPagination();
+        }
+
+        $auth = User::user();
+
+        if (!$auth || !$auth->can(AbilityEnum::LIST->value, Workspace::class)) {
+            $this->failedAsNotFound("user");
+        }
+
+        [$page, $limit] = $this->getPaginatorMetadata($request);
+        [$orderBy, $orderByDir] = $this->getOrderByMeta($request);
+        $includes = $this->getIncludedRelationships($request);
+
+        $workspaces = $this->workspaceService->searchWorkspaceList(
+            $searchValue,
+            $page,
+            $limit,
+            $orderBy,
+            $orderByDir,
+            $includes
+        );
+
+        $workspaces = $workspaces->through(function (Workspace $workspace) use (
+            $auth
+        ) {
+            $this->workspaceService->getUserCapabilitiesForWorkspace(
+                $auth,
+                $workspace
+            );
+            return $workspace;
+        });
+
+        return new WorkspaceCollection($workspaces);
+    }
+
+    /**
+     * Get workspace list count.
+     */
+    public function getWorkspaceListCount(): JsonResponse
+    {
+        $auth = User::user();
+
+        if (!$auth || !$auth->can(AbilityEnum::LIST->value, User::class)) {
+            $this->failedAsNotFound("user");
+        }
+
+        $count = Workspace::query()->count();
+
+        return $this->succeed(
+            [
+                "data" => $count,
+            ],
+            200,
+            false
+        );
     }
 
     /**

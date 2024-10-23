@@ -35,7 +35,7 @@ class WorkspaceResource extends BaseResource
     protected function getMeta(): array|MissingValue
     {
         $result = [];
-        $result["createdAt"] = $this?->created_at?->format("F j, Y");
+        $result["createdAtFormatted"] = $this?->created_at?->format("F j, Y");
 
         if ($this->capabilities) {
             $result["capabilities"] = $this->capabilities;
