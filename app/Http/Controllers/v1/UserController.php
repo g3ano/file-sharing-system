@@ -551,8 +551,7 @@ class UserController extends Controller
 
         if (
             !$user ||
-            !$auth->can(AbilityEnum::USER_ABILITY_MANAGE->value, $user) ||
-            ($user->can("*", "*") && !$auth->can("*", "*"))
+            !$auth->can(AbilityEnum::USER_ABILITY_MANAGE->value, $user)
         ) {
             $this->failedAsNotFound("user");
         }
