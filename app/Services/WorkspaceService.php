@@ -131,8 +131,8 @@ class WorkspaceService extends BaseService
         User $user,
         int $page = 1,
         int $limit = 10,
-        ?string $searchValue = null,
         array $includes = [],
+        ?string $searchValue = null,
         string $orderBy = "created_at",
         string $orderByDirection = "asc"
     ) {
@@ -147,9 +147,11 @@ class WorkspaceService extends BaseService
             );
         }
 
-        return $query
+        $result = $query
             ->orderByPivot($orderBy, $orderByDirection)
             ->paginate(perPage: $limit, page: $page);
+
+        return $result;
     }
 
     public function getUserCapabilitiesForWorkspace(

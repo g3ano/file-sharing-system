@@ -233,7 +233,13 @@ class UserService extends BaseService
         return User::onlyTrashed()
             ->with($includes)
             ->whereAny(
-                ["first_name", "last_name", "email", "username"],
+                [
+                    "first_name",
+                    "last_name",
+                    "email",
+                    "username",
+                    DB::raw("CONCAT(first_name, ' ', last_name)"),
+                ],
                 "ILIKE",
                 $searchValue
             )

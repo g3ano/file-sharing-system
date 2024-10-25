@@ -203,7 +203,7 @@ class WorkspaceController extends Controller
     public function getUserWorkspaceList(
         Request $request,
         string $userID
-    ): WorkspaceCollection {
+    ) {
         [$page, $limit] = $this->getPaginatorMetadata($request);
         [$orderBy, $orderByDirection] = $this->getOrderByMeta($request);
         $includes = $this->getIncludedRelationships($request);
@@ -226,8 +226,8 @@ class WorkspaceController extends Controller
             $user,
             $page,
             $limit,
-            $searchValue,
             $includes,
+            $searchValue,
             $orderBy,
             $orderByDirection
         );

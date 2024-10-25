@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Helpers\Slugable;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -23,7 +24,7 @@ class WorkspaceFactory extends Factory
         $slug = $this->getSlug($name);
 
         return [
-            'user_id' => fake()->numberBetween(1, 21),
+            'user_id' => User::factory()->create(),
             'name' => $name,
             'slug' => $slug,
             'description' => fake()->text(200),
