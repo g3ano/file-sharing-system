@@ -31,12 +31,10 @@ class RegisteredUserController extends Controller
 
         $data = $request->validated();
         $username = User::USERNAME_BASE . "_" . Str::random(8);
-        $slug = $this->getSlug($username);
 
         $user = User::query()->create([
             "first_name" => $data["first_name"],
             "last_name" => $data["last_name"],
-            "slug" => $slug,
             "username" => $username,
             "email" => $data["email"],
             "password" => Hash::make($data["password"]),

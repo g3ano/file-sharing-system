@@ -218,7 +218,7 @@ class UserController extends Controller
 
         if (!$user->delete()) {
             Log::error("Failed to deleted user", [
-                "userID" => $user->id,
+                "user" => $user,
             ]);
 
             $this->failedWithMessage(__("user.deleted.soft"), 500);
@@ -483,7 +483,12 @@ class UserController extends Controller
 
         [$page, $limit] = $this->getPaginatorMetadata($request);
 
-        $abilities = $this->userService->searchUserAbilities($user, $searchValue, $page, $limit);
+        $abilities = $this->userService->searchUserAbilities(
+            $user,
+            $searchValue,
+            $page,
+            $limit
+        );
 
         return new AbilityCollection($abilities);
     }

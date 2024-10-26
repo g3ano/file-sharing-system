@@ -21,14 +21,11 @@ class UserResource extends BaseResource
             "attributes" => $this->getAttributes([
                 "firstName" => $this->first_name,
                 "lastName" => $this->last_name,
-                "slug" => $this->slug,
                 "username" => $this->username,
                 "email" => $this->includeEmail ?? null ? $this->email : null,
                 "createdAt" => $this->created_at,
             ]),
-            "relationships" => $this->getRelationships([
-                "roles" => new RoleCollection($this->whenLoaded("roles")),
-            ]),
+            "relationships" => $this->getRelationships([]),
             "meta" => $this->getMeta(),
         ];
     }
