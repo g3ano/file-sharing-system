@@ -5,6 +5,7 @@ namespace Database\Seeders\v1;
 use App\Enums\AbilityEnum;
 use App\Models\User;
 use App\Helpers\Slugable;
+use App\Models\Project;
 use App\Models\Workspace;
 use Illuminate\Database\Seeder;
 use Silber\Bouncer\BouncerFacade;
@@ -23,7 +24,6 @@ class UserSeeder extends Seeder
             "first_name" => "Admin",
             "last_name" => "Admin",
             "username" => "admin",
-            "slug" => $this->getSlug("admin"),
             "email" => "admin@example.com",
             "password" => Hash::make("admin@example.com"),
         ]);
@@ -31,7 +31,6 @@ class UserSeeder extends Seeder
             "first_name" => "Manager",
             "last_name" => "Manager",
             "username" => "manager",
-            "slug" => $this->getSlug("manager"),
             "email" => "manager@example.com",
             "password" => Hash::make("manager@example.com"),
         ]);
@@ -80,6 +79,28 @@ class UserSeeder extends Seeder
             ],
             Workspace::class
         );
+        BouncerFacade::allow($admin)->to(
+            [
+                AbilityEnum::LIST->value,
+                AbilityEnum::VIEW->value,
+                AbilityEnum::CREATE->value,
+                AbilityEnum::UPDATE->value,
+                AbilityEnum::RESTORE->value,
+                AbilityEnum::DELETE->value,
+                AbilityEnum::FORCE_DELETE->value,
+
+                AbilityEnum::USER_ABILITY_MANAGE->value,
+                AbilityEnum::USER_ABILITY_SPECIAL_MANAGE->value,
+
+                AbilityEnum::PROJECT_MEMBER_LIST->value,
+                AbilityEnum::PROJECT_MEMBER_ADD->value,
+                AbilityEnum::PROJECT_MEMBER_REMOVE->value,
+                AbilityEnum::PROJECT_FILES_LIST->value,
+                AbilityEnum::PROJECT_FILES_ADD->value,
+                AbilityEnum::PROJECT_FILES_REMOVE->value,
+            ],
+            Project::class
+        );
 
         BouncerFacade::allow($manager)->to(
             [
@@ -123,6 +144,24 @@ class UserSeeder extends Seeder
                 AbilityEnum::WORKSPACE_PROJECT_REMOVE->value,
             ],
             Workspace::class
+        );
+        BouncerFacade::allow($manager)->to(
+            [
+                AbilityEnum::LIST->value,
+                AbilityEnum::VIEW->value,
+                AbilityEnum::CREATE->value,
+                AbilityEnum::UPDATE->value,
+
+                AbilityEnum::USER_ABILITY_MANAGE->value,
+
+                AbilityEnum::PROJECT_MEMBER_LIST->value,
+                AbilityEnum::PROJECT_MEMBER_ADD->value,
+                AbilityEnum::PROJECT_MEMBER_REMOVE->value,
+                AbilityEnum::PROJECT_FILES_LIST->value,
+                AbilityEnum::PROJECT_FILES_ADD->value,
+                AbilityEnum::PROJECT_FILES_REMOVE->value,
+            ],
+            Project::class
         );
     }
 }

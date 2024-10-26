@@ -26,7 +26,7 @@ class HandleWorkspaceMembersAbilitiesSync
         $action = $event->action;
 
         if (empty($workspacesID) || empty($membersID)) {
-            $this->failedAtRuntime(__('workspace.members.abilities_sync.empty_data', [
+            $this->failedAtRuntime(__('workspace.abilities_sync.empty_data', [
                 'attribute' => empty($workspacesID) ? 'workspaces list' : 'members list',
             ]));
         }
@@ -91,15 +91,15 @@ class HandleWorkspaceMembersAbilitiesSync
         $abilityIDs = [];
 
         DB::table(Models::table('abilities'))
-                ->select('id')
-                ->where('entity_type', Workspace::class)
-                ->whereIn('entity_id', $workspaceIDs)
-                ->orderBy('created_at')
-                ->chunk($count, function ($abilities) use (&$abilityIDs) {
-                    foreach ($abilities as $ability) {
-                        $abilityIDs[] = $ability->id;
-                    }
-                });
+            ->select('id')
+            ->where('entity_type', Workspace::class)
+            ->whereIn('entity_id', $workspaceIDs)
+            ->orderBy('created_at')
+            ->chunk($count, function ($abilities) use (&$abilityIDs) {
+                foreach ($abilities as $ability) {
+                    $abilityIDs[] = $ability->id;
+                }
+            });
 
         return $abilityIDs;
     }

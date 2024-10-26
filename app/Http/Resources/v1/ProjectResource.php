@@ -16,22 +16,26 @@ class ProjectResource extends BaseResource
     public function toArray(Request $request): array
     {
         return [
-            'id' => $this->id,
-            'type' => 'projects',
-            'attributes' => $this->attributes([
-                'name' => $this->name,
-                'slug' => $this->slug,
-                'description' => $this->description,
-                'createdAt' => $this->created_at,
+            "id" => $this->id,
+            "type" => "projects",
+            "attributes" => $this->getAttributes([
+                "name" => $this->name,
+                "description" => $this->description,
+                "createdAt" => $this->created_at,
             ]),
-            'meta' => $this->getMeta(),
+            "relationships" => $this->getRelationships([]),
+            "meta" => $this->getMeta(),
         ];
     }
 
     protected function getMeta(): array|MissingValue
     {
         $result = [];
-        $result['createdAt'] = $this->created_at->format('F j, Y');
+        $result["createdAt"] = $this->created_at->format("F j, Y");
+
+        if ($this->capabilities) {
+            $result["capabilities"] = $this->capabilities;
+        }
 
         return $result ?: new MissingValue();
     }

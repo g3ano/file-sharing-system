@@ -32,6 +32,13 @@ enum AbilityEnum: string
     case WORKSPACE_PROJECT_ADD = "workspace project add";
     case WORKSPACE_PROJECT_REMOVE = "workspace project remove";
 
+    case PROJECT_MEMBER_LIST = "project member list";
+    case PROJECT_MEMBER_ADD = "project member add";
+    case PROJECT_MEMBER_REMOVE = "project member remove";
+    case PROJECT_FILES_LIST = "project files list";
+    case PROJECT_FILES_ADD = "project files add";
+    case PROJECT_FILES_REMOVE = "project files remove";
+
     /**
      * Gets case label.
      */
@@ -63,6 +70,13 @@ enum AbilityEnum: string
             self::WORKSPACE_PROJECT_LIST => "List Workspace Projects",
             self::WORKSPACE_PROJECT_ADD => "Add Workspace Project",
             self::WORKSPACE_PROJECT_REMOVE => "Remove Workspace Project",
+            // Project abilities
+            self::PROJECT_MEMBER_LIST => "List Project Members",
+            self::PROJECT_MEMBER_ADD => "Add Project Member",
+            self::PROJECT_MEMBER_REMOVE => "Remove Project Member",
+            self::PROJECT_FILES_LIST => "List Project Files",
+            self::PROJECT_FILES_ADD => "Add Project Files",
+            self::PROJECT_FILES_REMOVE => "Remove Project Files",
         };
     }
 }

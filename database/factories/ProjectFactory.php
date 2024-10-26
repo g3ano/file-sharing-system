@@ -20,13 +20,12 @@ class ProjectFactory extends Factory
     public function definition(): array
     {
         $name = fake()->sentence(4);
-        $slug = $this->getSlug($name);
 
         return [
-            'workspace_id' => fake()->numberBetween(1, 10),
-            'name' => $name,
-            'slug' => $slug,
-            'description' => fake()->text(100),
+            "workspace_id" => fake()->numberBetween(1, 10),
+            "user_id" => fake()->numberBetween(1, 10),
+            "name" => $name,
+            "description" => fake()->text(100),
         ];
     }
 }
