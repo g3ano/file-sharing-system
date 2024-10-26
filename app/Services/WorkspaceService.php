@@ -48,7 +48,6 @@ class WorkspaceService extends BaseService
         return Workspace::query()->create([
             "name" => $data["name"],
             "description" => $data["description"],
-            "slug" => $this->getSlug($data["name"]),
             "user_id" => $user->id,
         ]);
     }
@@ -99,6 +98,24 @@ class WorkspaceService extends BaseService
     ): LengthAwarePaginator {
         return Workspace::query()
             ->with($includes)
+            ->select("workspaces.*")
+            ->orderBy($orderBy, $orderByDir)
+            ->paginate(perPage: $limit, page: $page);
+    }
+
+    /**
+     * Get paginated list of deleted workspaces, list can be searched.
+     */
+    public function getDeletedWorkspaceList(
+        string|int $page,
+        string|int $limit,
+        string $orderBy = "created_at",
+        string $orderByDir = "asc",
+        array $includes = []
+    ): LengthAwarePaginator {
+        return Workspace::query()
+            ->with($includes)
+            ->onlyTrashed()
             ->select("workspaces.*")
             ->orderBy($orderBy, $orderByDir)
             ->paginate(perPage: $limit, page: $page);

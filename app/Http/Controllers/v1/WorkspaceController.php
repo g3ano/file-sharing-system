@@ -91,9 +91,36 @@ class WorkspaceController extends Controller
     }
 
     /**
+     * Get workspace data by ID.
+     */
+    public function getDeletedWorkspaceByID(
+        Request $request,
+        string $workspaceID
+    ): WorkspaceResource {
+        $includes = $this->getIncludedRelationships($request);
+        $auth = User::user();
+        $workspace = Workspace::query()
+            ->with($includes)
+            ->onlyTrashed()
+            ->where("id", $workspaceID)
+            ->first();
+
+        if (!$workspace || !$auth->can(AbilityEnum::VIEW->value, $workspace)) {
+            $this->failedAsNotFound("workspace");
+        }
+
+        $this->workspaceService->getUserCapabilitiesForWorkspace(
+            $auth,
+            $workspace
+        );
+
+        return new WorkspaceResource($workspace);
+    }
+
+    /**
      * Get paginated list of workspaces.
      */
-    public function getWorkspaceList(Request $request): WorkspaceCollection
+    public function getWorkspaceList(Request $request)
     {
         $isSearchQuery = (bool) ($request->query("searchValue") ?? "");
 
@@ -112,6 +139,48 @@ class WorkspaceController extends Controller
         $includes = $this->getIncludedRelationships($request);
 
         $workspaces = $this->workspaceService->getWorkspaceList(
+            $page,
+            $limit,
+            $orderBy,
+            $orderByDir,
+            $includes
+        );
+
+        $workspaces = $workspaces->through(function (Workspace $workspace) use (
+            $auth
+        ) {
+            $this->workspaceService->getUserCapabilitiesForWorkspace(
+                $auth,
+                $workspace
+            );
+            return $workspace;
+        });
+
+        return new WorkspaceCollection($workspaces);
+    }
+
+    /**
+     * Get paginated list of deleted workspaces.
+     */
+    public function getDeletedWorkspaceList(Request $request)
+    {
+        $isSearchQuery = (bool) ($request->query("searchValue") ?? "");
+
+        if ($isSearchQuery) {
+            return $this->searchWorkspaceList($request);
+        }
+
+        $auth = User::user();
+
+        if (!$auth || !$auth->can(AbilityEnum::LIST->value, Workspace::class)) {
+            $this->failedAsNotFound("workspace");
+        }
+
+        [$page, $limit] = $this->getPaginatorMetadata($request);
+        [$orderBy, $orderByDir] = $this->getOrderByMeta($request);
+        $includes = $this->getIncludedRelationships($request);
+
+        $workspaces = $this->workspaceService->getDeletedWorkspaceList(
             $page,
             $limit,
             $orderBy,
@@ -200,10 +269,8 @@ class WorkspaceController extends Controller
     /**
      * Get paginated list of user workspaces.
      */
-    public function getUserWorkspaceList(
-        Request $request,
-        string $userID
-    ) {
+    public function getUserWorkspaceList(Request $request, string $userID)
+    {
         [$page, $limit] = $this->getPaginatorMetadata($request);
         [$orderBy, $orderByDirection] = $this->getOrderByMeta($request);
         $includes = $this->getIncludedRelationships($request);
@@ -252,9 +319,9 @@ class WorkspaceController extends Controller
     public function addWorkspaceMembers(
         AddWorkspaceMembersRequest $request,
         string $workspaceID
-    ): JsonResponse {
-        $workspace = Workspace::query()->where("id", $workspaceID)->first();
+    ) {
         $auth = User::user();
+        $workspace = Workspace::query()->where("id", $workspaceID)->first();
 
         if (
             !$workspace ||
@@ -287,7 +354,7 @@ class WorkspaceController extends Controller
     public function removeWorkspaceMembers(
         RemoveWorkspaceMembersRequest $request,
         string $workspaceID
-    ): JsonResponse {
+    ) {
         $workspace = Workspace::query()->where("id", $workspaceID)->first();
         $auth = User::user();
 
@@ -339,10 +406,8 @@ class WorkspaceController extends Controller
     /**
      * Get paginated list of workspace Members.
      */
-    public function getWorkspaceMembers(
-        Request $request,
-        string $workspaceID
-    ): UserCollection {
+    public function getWorkspaceMembers(Request $request, string $workspaceID)
+    {
         $page = $request->get("page") ?? $this->page;
         $limit = $request->get("limit") ?? $this->limit;
 
@@ -431,7 +496,7 @@ class WorkspaceController extends Controller
         UpdateWorkspaceMemberAbilitiesRequest $request,
         string $workspaceID,
         string $userID
-    ): JsonResponse {
+    ) {
         $member = User::query()->where("id", $userID)->first();
         $workspace = Workspace::query()->where("id", $workspaceID)->first();
 
@@ -458,5 +523,101 @@ class WorkspaceController extends Controller
         );
 
         return $this->succeedWithStatus();
+    }
+
+    /**
+     * Soft deletes a workspace.
+     */
+    public function deleteWorkspace(string $workspaceID)
+    {
+        $auth = User::user();
+        $workspace = Workspace::query()->where("id", $workspaceID)->first();
+
+        if (
+            !$workspace ||
+            !$auth->can(AbilityEnum::DELETE->value, $workspace)
+        ) {
+            $this->failedAsNotFound("workspace");
+        }
+
+        if (!$workspace->delete()) {
+            Log::error("Failed to deleted workspace", [
+                "workspace" => $workspace,
+            ]);
+
+            $this->failedWithMessage(__("workspace.deleted.soft"), 500);
+        }
+
+        return $this->succeedWithStatus();
+    }
+
+    /**
+     * Restore soft deleted workspace.
+     */
+    public function restoreWorkspace(string $workspaceID)
+    {
+        $auth = User::user();
+        $workspace = Workspace::onlyTrashed()
+            ->where("id", $workspaceID)
+            ->first();
+
+        if (
+            !$workspace ||
+            !$auth->can(AbilityEnum::RESTORE->value, $workspace)
+        ) {
+            $this->failedAsNotFound("workspace");
+        }
+
+        if (!$workspace->restore()) {
+            Log::error("Failed to restore workspace", [
+                "workspace" => $workspace,
+            ]);
+
+            $this->failedWithMessage(__("workspace.deleted.restore"), 500);
+        }
+
+        return $this->succeedWithStatus();
+    }
+
+    /**
+     * Force deletes a workspace.
+     */
+    public function forceDeleteWorkspace(string $workspaceID)
+    {
+        $auth = User::user();
+        $workspace = Workspace::query()->where("id", $workspaceID)->first();
+
+        if (
+            !$workspace ||
+            !$auth->can(AbilityEnum::FORCE_DELETE->value, $workspace)
+        ) {
+            $this->failedAsNotFound("workspace");
+        }
+
+        if (!$workspace->forceDelete()) {
+            Log::error("Failed to force delete workspace", [
+                "workspace" => $workspace,
+            ]);
+
+            $this->failedWithMessage(__("workspace.deleted.force_delete"), 500);
+        }
+
+        return $this->succeedWithStatus();
+    }
+
+    /**
+     * Get paginated list of workspace projects.
+     */
+    public function getWorkspaceProjects(string $workspaceID)
+    {
+        $auth = User::user();
+        $workspace = Workspace::query()->where("id", $workspaceID)->first();
+
+        if (
+            !$workspace ||
+            !$auth->can(AbilityEnum::WORKSPACE_PROJECT_LIST->value, $workspace)
+        ) {
+            $this->failedAsNotFound("workspace");
+        }
     }
 }

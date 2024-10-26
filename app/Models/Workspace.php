@@ -14,26 +14,22 @@ class Workspace extends Model
     use HasFactory;
     use SoftDeletes;
 
-    protected $fillable = [
-        'name',
-        'slug',
-        'description',
-        'user_id',
-    ];
+    protected $fillable = ["name", "description", "user_id"];
 
     public function members(): BelongsToMany
     {
         return $this->belongsToMany(User::class)
+            ->using(UserWorkspace::class)
             ->withTimestamps();
     }
 
     public function owner(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(User::class, "user_id");
     }
 
     public function abilities(): MorphMany
     {
-        return $this->morphMany(Ability::class, 'entity');
+        return $this->morphMany(Ability::class, "entity");
     }
 }

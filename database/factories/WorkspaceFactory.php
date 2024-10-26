@@ -21,13 +21,11 @@ class WorkspaceFactory extends Factory
     public function definition(): array
     {
         $name = fake()->sentence(4);
-        $slug = $this->getSlug($name);
 
         return [
-            'user_id' => User::factory()->create(),
-            'name' => $name,
-            'slug' => $slug,
-            'description' => fake()->text(200),
+            "user_id" => User::factory()->create(),
+            "name" => $name,
+            "description" => fake()->text(200),
         ];
     }
 }

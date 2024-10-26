@@ -20,8 +20,11 @@ class WorkspaceMembershipUpdated
     /**
      * Create a new event instance.
      */
-    public function __construct(int|array $membersID = [], int|array $workspacesID = [], ?WorkspaceMembershipUpdatedActionEnum $action = null)
-    {
+    public function __construct(
+        int|array $membersID = [],
+        int|array $workspacesID = [],
+        ?WorkspaceMembershipUpdatedActionEnum $action = null
+    ) {
         $this->workspacesID = (array) $workspacesID;
         $this->membersID = (array) $membersID;
         $this->action = $action ?? WorkspaceMembershipUpdatedActionEnum::ADD;
