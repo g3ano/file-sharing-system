@@ -20,6 +20,8 @@ enum AbilityEnum: string
     case USER_WORKSPACE_LIST = "user workspace list";
     case USER_PROJECT_LIST = "user project list";
 
+    case STORAGE_VIEW = "storage view";
+
     // Workspace abilities
     case WORKSPACE_MEMBER_LIST = "workspace member list";
     case WORKSPACE_MEMBER_ADD = "workspace member add";
@@ -59,6 +61,7 @@ enum AbilityEnum: string
             self::USER_ABILITY_MANAGE => "Manage User Abilities",
             self::USER_ABILITY_SPECIAL_MANAGE
                 => "Manage User special Abilities",
+            self::STORAGE_VIEW => "View Storage status",
             // Workspace abilities
             self::WORKSPACE_MEMBER_LIST => "List Workspace Members",
             self::WORKSPACE_MEMBER_ADD => "Add Workspace Member",

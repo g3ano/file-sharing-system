@@ -36,6 +36,7 @@ class UserSeeder extends Seeder
             "password" => Hash::make("manager@example.com"),
         ]);
 
+        BouncerFacade::allow($admin)->to(AbilityEnum::STORAGE_VIEW->value);
         BouncerFacade::allow($admin)->to(
             [
                 AbilityEnum::LIST->value,
@@ -67,6 +68,8 @@ class UserSeeder extends Seeder
                 AbilityEnum::USER_ABILITY_MANAGE->value,
                 AbilityEnum::USER_ABILITY_SPECIAL_MANAGE->value,
 
+                AbilityEnum::STORAGE_VIEW->value,
+
                 AbilityEnum::WORKSPACE_MEMBER_LIST->value,
                 AbilityEnum::WORKSPACE_MEMBER_ADD->value,
                 AbilityEnum::WORKSPACE_MEMBER_REMOVE->value,
@@ -88,6 +91,8 @@ class UserSeeder extends Seeder
 
                 AbilityEnum::USER_ABILITY_MANAGE->value,
                 AbilityEnum::USER_ABILITY_SPECIAL_MANAGE->value,
+
+                AbilityEnum::STORAGE_VIEW->value,
 
                 AbilityEnum::PROJECT_MEMBER_LIST->value,
                 AbilityEnum::PROJECT_MEMBER_ADD->value,
@@ -113,6 +118,7 @@ class UserSeeder extends Seeder
             File::class
         );
 
+        BouncerFacade::allow($manager)->to(AbilityEnum::STORAGE_VIEW->value);
         BouncerFacade::allow($manager)->to(
             [
                 AbilityEnum::LIST->value,
@@ -144,6 +150,8 @@ class UserSeeder extends Seeder
                 AbilityEnum::USER_ABILITY_MANAGE->value,
                 AbilityEnum::USER_ABILITY_SPECIAL_MANAGE->value,
 
+                AbilityEnum::STORAGE_VIEW->value,
+
                 AbilityEnum::WORKSPACE_MEMBER_LIST->value,
                 AbilityEnum::WORKSPACE_MEMBER_ADD->value,
                 AbilityEnum::WORKSPACE_MEMBER_REMOVE->value,
@@ -162,6 +170,8 @@ class UserSeeder extends Seeder
 
                 AbilityEnum::USER_ABILITY_MANAGE->value,
                 AbilityEnum::USER_ABILITY_SPECIAL_MANAGE->value,
+
+                AbilityEnum::STORAGE_VIEW->value,
 
                 AbilityEnum::PROJECT_MEMBER_LIST->value,
                 AbilityEnum::PROJECT_MEMBER_ADD->value,

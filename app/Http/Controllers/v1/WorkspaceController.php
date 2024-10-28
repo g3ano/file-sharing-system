@@ -87,9 +87,8 @@ class WorkspaceController extends Controller
     /**
      * Get workspace data by ID.
      */
-    public function getDeletedWorkspaceByID(
-        string $workspaceID
-    ) {
+    public function getDeletedWorkspaceByID(string $workspaceID)
+    {
         $auth = User::user();
         $workspace = Workspace::onlyTrashed()
             ->where("id", $workspaceID)
@@ -492,7 +491,10 @@ class WorkspaceController extends Controller
 
         $auth = User::user();
 
-        if (!$auth->can(AbilityEnum::USER_ABILITY_MANAGE->value, $member)) {
+        if (
+            !$auth->can(AbilityEnum::USER_ABILITY_MANAGE->value, $member) &&
+            !$auth->can(AbilityEnum::USER_ABILITY_MANAGE->value, $workspace)
+        ) {
             $this->failedAsNotFound("user");
         }
 

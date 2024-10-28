@@ -515,7 +515,10 @@ class ProjectController extends Controller
 
         $auth = User::user();
 
-        if (!$auth->can(AbilityEnum::USER_ABILITY_MANAGE->value, $member)) {
+        if (
+            !$auth->can(AbilityEnum::USER_ABILITY_MANAGE->value, $member) &&
+            !$auth->can(AbilityEnum::USER_ABILITY_MANAGE->value, $project)
+        ) {
             $this->failedAsNotFound("user");
         }
 

@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\v1;
 
+use App\Enums\AbilityEnum;
 use App\Http\Controllers\Controller;
 use App\Models\Project;
+use App\Models\User;
 use App\Models\Workspace;
 use App\Services\StorageService;
 use Illuminate\Http\Request;
@@ -24,6 +26,12 @@ class StorageController extends Controller
      */
     public function getWorkspaceListUsedSpace()
     {
+        $auth = User::user();
+
+        if (!$auth->can(AbilityEnum::STORAGE_VIEW->value, Workspace::class)) {
+            $this->failedAsNotFound("workspace");
+        }
+
         $space = $this->storageService->getWorkspaceListUsedSpace();
 
         return $this->succeed(
@@ -38,9 +46,13 @@ class StorageController extends Controller
      */
     public function getWorkspaceUsedSpace(string $workspaceID)
     {
+        $auth = User::user();
         $workspace = Workspace::query()->where("id", $workspaceID)->first();
 
-        if (!$workspace) {
+        if (
+            !$workspace ||
+            !$auth->can(AbilityEnum::STORAGE_VIEW->value, $workspace)
+        ) {
             $this->failedAsNotFound("workspace");
         }
 
@@ -58,6 +70,12 @@ class StorageController extends Controller
      */
     public function getDeletedWorkspaceListUsedSpace()
     {
+        $auth = User::user();
+
+        if (!$auth->can(AbilityEnum::STORAGE_VIEW->value, Workspace::class)) {
+            $this->failedAsNotFound("workspace");
+        }
+
         $space = $this->storageService->getDeletedWorkspaceListUsedSpace();
 
         return $this->succeed(
@@ -72,11 +90,15 @@ class StorageController extends Controller
      */
     public function getDeletedWorkspaceUsedSpace(string $workspaceID)
     {
+        $auth = User::user();
         $workspace = Workspace::onlyTrashed()
             ->where("id", $workspaceID)
             ->first();
 
-        if (!$workspace) {
+        if (
+            !$workspace ||
+            !$auth->can(AbilityEnum::STORAGE_VIEW->value, $workspace)
+        ) {
             $this->failedAsNotFound("workspace");
         }
 
@@ -96,9 +118,13 @@ class StorageController extends Controller
      */
     public function getProjectUsedSpace(string $projectID)
     {
+        $auth = User::user();
         $project = Project::query()->where("id", $projectID)->first();
 
-        if (!$project) {
+        if (
+            !$project ||
+            !$auth->can(AbilityEnum::STORAGE_VIEW->value, $project)
+        ) {
             $this->failedAsNotFound("project");
         }
 
@@ -116,9 +142,13 @@ class StorageController extends Controller
      */
     public function getDeletedProjectUsedSpace(string $projectID)
     {
+        $auth = User::user();
         $project = Project::onlyTrashed()->where("id", $projectID)->first();
 
-        if (!$project) {
+        if (
+            !$project ||
+            !$auth->can(AbilityEnum::STORAGE_VIEW->value, $project)
+        ) {
             $this->failedAsNotFound("project");
         }
 
@@ -133,6 +163,12 @@ class StorageController extends Controller
 
     public function getDiskSpaceData()
     {
+        $auth = User::user();
+
+        if (!$auth->can(AbilityEnum::STORAGE_VIEW->value)) {
+            $this->failedAsNotFound("user");
+        }
+
         try {
             $data = $this->storageService->getDiskSpace();
         } catch (Throwable $e) {
