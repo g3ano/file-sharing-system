@@ -9,13 +9,17 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\v1\Project\AddProjectMemberRequest;
 use App\Http\Requests\v1\Project\CreateProjectRequest;
 use App\Http\Requests\v1\Project\RemoveProjectMembersRequest;
+use App\Http\Requests\v1\Project\UpdateProjectMemberAbilitiesRequest;
+use App\Http\Resources\v1\AbilityCollection;
 use App\Http\Resources\v1\ProjectCollection;
 use App\Http\Resources\v1\ProjectResource;
 use App\Http\Resources\v1\UserCollection;
 use App\Models\Project;
 use App\Models\User;
+use App\Models\Workspace;
 use App\Services\ProjectService;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -115,7 +119,7 @@ class ProjectController extends Controller
     }
 
     /**
-     * Force deletes a project.
+     * Restores a deleted files.
      */
     public function restoreProject(string $projectID)
     {
@@ -174,6 +178,24 @@ class ProjectController extends Controller
     }
 
     /**
+     * Get projects count.
+     */
+    public function getProjectListCount()
+    {
+        $auth = User::user();
+
+        if (!$auth->can(AbilityEnum::LIST->value, Project::class)) {
+            $this->failedAsNotFound("file");
+        }
+
+        return $this->succeed(
+            ["data" => Project::query()->count()],
+            Response::HTTP_OK,
+            false
+        );
+    }
+
+    /**
      * Search projects.
      */
     public function searchProjectList(Request $request)
@@ -205,6 +227,23 @@ class ProjectController extends Controller
         });
 
         return new ProjectCollection($projects);
+    }
+
+    /**
+     * Get project data.
+     */
+    public function getProjectByID(Request $request, string $projectID)
+    {
+        $auth = User::user();
+        $porject = Project::query()->where("id", $projectID)->first();
+
+        if (!$porject || !$auth->can(AbilityEnum::VIEW->value, $porject)) {
+            $this->failedAsNotFound("project");
+        }
+
+        $this->projectService->getUserCapabilitiesForProject($auth, $porject);
+
+        return new ProjectResource($porject);
     }
 
     /**
@@ -241,6 +280,41 @@ class ProjectController extends Controller
         });
 
         return new ProjectCollection($projects);
+    }
+
+    /**
+     * Get deleted projects count.
+     */
+    public function getDeletedProjectListCount()
+    {
+        $auth = User::user();
+
+        if (!$auth->can(AbilityEnum::LIST->value, Project::class)) {
+            $this->failedAsNotFound("file");
+        }
+
+        return $this->succeed(
+            ["data" => Project::onlyTrashed()->count()],
+            Response::HTTP_OK,
+            false
+        );
+    }
+
+    /**
+     * Get deleted project data.
+     */
+    public function getDeletedProjectByID(Request $request, string $projectID)
+    {
+        $auth = User::user();
+        $porject = Project::onlyTrashed()->where("id", $projectID)->first();
+
+        if (!$porject || !$auth->can(AbilityEnum::VIEW->value, $porject)) {
+            $this->failedAsNotFound("project");
+        }
+
+        $this->projectService->getUserCapabilitiesForProject($auth, $porject);
+
+        return new ProjectResource($porject);
     }
 
     /**
@@ -385,10 +459,150 @@ class ProjectController extends Controller
         return $this->succeedWithStatus();
     }
 
+    /**
+     * Get project member abilities.
+     */
     public function getProjectMemberAbilities(
+        Request $request,
         string $projectID,
-        string $memberID
+        string $userID
     ) {
-        //
+        $auth = User::user();
+        $user = User::query()->where("id", $userID)->first();
+
+        if (!$user) {
+            $this->failedAsNotFound("user");
+        }
+
+        $project = Project::query()->where("id", $projectID)->first();
+
+        if (
+            !$project ||
+            !$this->projectService->isUserProjectMember($project, $user)
+        ) {
+            $this->failedWithMessage(__("project.members.not_found"), 404);
+        }
+
+        [$page, $limit] = $this->getPaginatorMetadata($request);
+
+        $abilities = $this->projectService->getProjectMemberAbilities(
+            $project,
+            $user,
+            $page,
+            $limit
+        );
+
+        return new AbilityCollection($abilities);
+    }
+
+    /**
+     * Update project member abilities.
+     */
+    public function updateProjectMemberAbilities(
+        UpdateProjectMemberAbilitiesRequest $request,
+        string $projectID,
+        string $userID
+    ) {
+        $member = User::query()->where("id", $userID)->first();
+        $project = Project::query()->where("id", $projectID)->first();
+
+        if (
+            !$project ||
+            !$this->projectService->isUserProjectMember($project, $member)
+        ) {
+            $this->failedWithMessage(__("project.members.not_found"), 404);
+        }
+
+        $auth = User::user();
+
+        if (!$auth->can(AbilityEnum::USER_ABILITY_MANAGE->value, $member)) {
+            $this->failedAsNotFound("user");
+        }
+
+        $data = $request->validated();
+
+        $this->projectService->updateProjectMemberAbilities(
+            $project,
+            $member,
+            $data
+        );
+
+        return $this->succeedWithStatus();
+    }
+
+    /**
+     * Get paginated list of user projects.
+     */
+    public function getUserProjectList(Request $request, string $userID)
+    {
+        $auth = User::user();
+        $user = User::query()->where("id", $userID)->first();
+
+        if (
+            !$user ||
+            !$auth->can(AbilityEnum::USER_PROJECT_LIST->value, $user)
+        ) {
+            $this->failedAsNotFound("user");
+        }
+
+        [$page, $limit] = $this->getPaginatorMetadata($request);
+        [$orderBy, $orderByDirection] = $this->getOrderByMeta($request);
+
+        $projects = $this->projectService->getUserProjectList(
+            $user,
+            $page,
+            $limit,
+            $orderBy,
+            $orderByDirection
+        );
+
+        $projects = $projects->through(function (Project $project) use ($auth) {
+            $this->projectService->getUserCapabilitiesForProject(
+                $auth,
+                $project
+            );
+            return $project;
+        });
+
+        return new ProjectCollection($projects);
+    }
+
+    /**
+     * Get paginated list of workspace projects.
+     */
+    public function getWorkspaceProjectList(
+        Request $request,
+        string $workspaceID
+    ) {
+        $auth = User::user();
+        $workspace = Workspace::query()->where("id", $workspaceID)->first();
+
+        if (
+            !$workspace ||
+            !$auth->can(AbilityEnum::WORKSPACE_PROJECT_LIST->value, $workspace)
+        ) {
+            $this->failedAsNotFound("workspace");
+        }
+
+        [$page, $limit] = $this->getPaginatorMetadata($request);
+        [$orderBy, $orderByDirection] = $this->getOrderByMeta($request);
+
+        $projects = $this->projectService->getWorkspaceProjectList(
+            $workspace,
+            $page,
+            $limit,
+            $orderBy,
+            $orderByDirection
+        );
+
+        $projects = $projects->through(function (Project $project) use ($auth) {
+            $this->projectService->getUserCapabilitiesForProject(
+                $auth,
+                $project
+            );
+            return $project;
+        });
+
+        return new ProjectCollection($projects);
     }
 }

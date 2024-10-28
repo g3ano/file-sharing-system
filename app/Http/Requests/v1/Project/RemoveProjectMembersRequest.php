@@ -3,8 +3,10 @@
 namespace App\Http\Requests\v1\Project;
 
 use App\Http\Requests\BaseRequest;
+use App\Models\Project;
 use App\Models\ProjectUser;
 use App\Models\User;
+use App\Models\UserWorkspace;
 use Illuminate\Validation\Rule;
 
 class RemoveProjectMembersRequest extends BaseRequest
@@ -24,6 +26,12 @@ class RemoveProjectMembersRequest extends BaseRequest
      */
     public function rules(): array
     {
+        $project = once(
+            fn() => Project::query()
+                ->where("id", (int) $this->projectID)
+                ->first()
+        );
+
         return [
             "members" => ["bail", "present", "array", "min:1"],
             "members.*" => [
@@ -31,11 +39,25 @@ class RemoveProjectMembersRequest extends BaseRequest
                 "min:1",
                 "numeric",
                 Rule::exists(User::class, "id"),
-                Rule::unique(ProjectUser::class, "user_id")->where(
+                Rule::when(
+                    !is_null($project),
+                    Rule::exists(UserWorkspace::class, "user_id")->where(
+                        "workspace_id",
+                        $project?->workspace_id
+                    )
+                ),
+                Rule::exists(ProjectUser::class, "user_id")->where(
                     "project_id",
-                    (int) $this->projectID
+                    (int) $project->id
                 ),
             ],
+        ];
+    }
+
+    public function attributes(): array
+    {
+        return [
+            "members.*" => "member",
         ];
     }
 }

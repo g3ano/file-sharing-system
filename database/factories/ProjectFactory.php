@@ -19,12 +19,10 @@ class ProjectFactory extends Factory
      */
     public function definition(): array
     {
-        $name = fake()->sentence(4);
-
         return [
             "workspace_id" => fake()->numberBetween(1, 10),
             "user_id" => fake()->numberBetween(1, 10),
-            "name" => $name,
+            "name" => fake()->sentence(2),
             "description" => fake()->text(100),
         ];
     }

@@ -26,6 +26,12 @@ class CreateProjectRequest extends BaseRequest
     public function rules(): array
     {
         return [
+            "workspace_id" => [
+                "bail",
+                "required",
+                "numeric",
+                Rule::exists(Workspace::class, "id"),
+            ],
             "name" => [
                 "bail",
                 "required",
@@ -34,12 +40,6 @@ class CreateProjectRequest extends BaseRequest
                 Rule::unique(Project::class, "name"),
             ],
             "description" => ["bail", "required", "string", "max:1000"],
-            "workspace_id" => [
-                "bail",
-                "required",
-                "numeric",
-                Rule::exists(Workspace::class, "id"),
-            ],
         ];
     }
 }

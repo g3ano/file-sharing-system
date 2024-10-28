@@ -10,4 +10,7 @@ return [
         "restore" => "Failed to restore deleted project.",
         "force_delete" => "Failed to force delete deleted project.",
     ],
+    "members" => [
+        "not_found" => 'Project member isn\'t found',
+    ],
 ];

@@ -31,11 +31,19 @@ class ProjectResource extends BaseResource
     protected function getMeta(): array|MissingValue
     {
         $result = [];
-        $result["createdAt"] = $this->created_at->format("F j, Y");
+        $result["createdAtFormatted"] = $this->created_at->format("F j, Y");
 
         if ($this->capabilities) {
             $result["capabilities"] = $this->capabilities;
         }
+
+        $result["deleted"] = is_null($this->deleted_at)
+            ? new MissingValue()
+            : [
+                "isDeleted" => true,
+                "deletedAt" => $this->deleted_at,
+                "deletedAtFormatted" => $this->deleted_at->format("F j, Y"),
+            ];
 
         return $result ?: new MissingValue();
     }

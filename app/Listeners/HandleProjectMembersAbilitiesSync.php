@@ -3,14 +3,13 @@
 namespace App\Listeners;
 
 use App\Enums\AbilityEnum;
-use App\Events\WorkspaceMembershipUpdated;
+use App\Enums\ProjectMembershipUpdatedActionEnum;
 use App\Helpers\HasResponse;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\DB;
 use Silber\Bouncer\BouncerFacade;
 use Silber\Bouncer\Database\Models;
-use App\Enums\WorkspaceMembershipUpdatedActionEnum;
 use App\Events\ProjectMembershipUpdated;
 use App\Models\Project;
 
@@ -39,7 +38,7 @@ class HandleProjectMembersAbilitiesSync
 
         $this->BulkDeleteAbilities($membersID, $projectID);
 
-        if ($action === WorkspaceMembershipUpdatedActionEnum::ADD) {
+        if ($action === ProjectMembershipUpdatedActionEnum::ADD) {
             $this->BulkInsertAbilities($membersID, $projectID);
         }
     }
