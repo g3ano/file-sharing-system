@@ -20,12 +20,10 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->call([
-            BouncerSeeder::class,
-            UserSeeder::class,
-        ]);
+        $this->call([BouncerSeeder::class, UserSeeder::class]);
 
         $workspaces = Workspace::factory()->count(10);
         User::factory()->count(20)->hasAttached($workspaces)->create();
+        Project::factory()->count(20)->create();
     }
 }

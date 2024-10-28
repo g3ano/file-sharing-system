@@ -3,6 +3,7 @@
 namespace App\Helpers;
 
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Http\Response;
 use RuntimeException;
 use Throwable;
 
@@ -10,7 +11,7 @@ trait HasResponse
 {
     public function succeed(
         array $data,
-        int $status = 200,
+        int $status = Response::HTTP_OK,
         $wrap = true,
         $headers = []
     ) {
@@ -25,7 +26,7 @@ trait HasResponse
         array $data = [],
         $page = 1,
         $pages = 1,
-        int $status = 200,
+        int $status = Response::HTTP_OK,
         $headers = []
     ) {
         return $this->succeed(
@@ -44,7 +45,7 @@ trait HasResponse
 
     public function succeedWithStatus(
         array $data = [],
-        int $status = 200,
+        int $status = Response::HTTP_OK,
         array $headers = []
     ) {
         return $this->succeed(
@@ -61,7 +62,7 @@ trait HasResponse
     public function succeedWithMessage(
         string $message,
         array $data = [],
-        int $status = 200,
+        int $status = Response::HTTP_OK,
         array $headers = []
     ) {
         return $this->succeed(
@@ -80,7 +81,7 @@ trait HasResponse
      */
     public function failed(
         array $errors,
-        int $status = 400,
+        int $status = Response::HTTP_BAD_REQUEST,
         array $headers = []
     ) {
         throw new HttpResponseException(
@@ -99,7 +100,7 @@ trait HasResponse
      */
     public function failedWithMessage(
         string $message,
-        int $status = 400,
+        int $status = Response::HTTP_BAD_REQUEST,
         array $headers = []
     ) {
         $this->failed(
@@ -118,7 +119,7 @@ trait HasResponse
             ? __("$resource.not_found")
             : "Resource is not found";
 
-        $this->failedWithMessage($message, 404);
+        $this->failedWithMessage($message, Response::HTTP_NOT_FOUND);
     }
 
     /**
@@ -126,7 +127,7 @@ trait HasResponse
      */
     public static function failedAtRuntime(
         string $error,
-        ?int $code = 400,
+        ?int $code = Response::HTTP_BAD_REQUEST,
         ?string $key = null
     ) {
         $error = is_null($key) ? $error : $key . "|" . $error;
@@ -166,9 +167,9 @@ trait HasResponse
         $code = $e->getCode();
 
         if (is_null($code)) {
-            return 400;
+            return Response::HTTP_BAD_REQUEST;
         }
 
-        return strlen($code) !== 3 ? 400 : $code;
+        return strlen($code) !== 3 ? Response::HTTP_BAD_REQUEST : $code;
     }
 }

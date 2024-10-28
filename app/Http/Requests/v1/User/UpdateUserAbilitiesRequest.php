@@ -21,11 +21,7 @@ class UpdateUserAbilitiesRequest extends BaseRequest
         AbilityEnum::USER_ABILITY_MANAGE->value,
         AbilityEnum::USER_ABILITY_SPECIAL_MANAGE->value,
         AbilityEnum::USER_WORKSPACE_LIST->value,
-        AbilityEnum::USER_WORKSPACE_ADD->value,
-        AbilityEnum::USER_WORKSPACE_REMOVE->value,
         AbilityEnum::USER_PROJECT_LIST->value,
-        AbilityEnum::USER_PROJECT_ADD->value,
-        AbilityEnum::USER_PROJECT_REMOVE->value,
     ];
 
     /**
@@ -71,15 +67,9 @@ class UpdateUserAbilitiesRequest extends BaseRequest
     public function attributes(): array
     {
         return [
-            "add.*" => "entries to add",
-            "add.*.name" => "name",
-            "add.*.type" => "type",
-            "remove.*" => "entries to remove",
-            "remove.*.name" => "name",
-            "remove.*.type" => "type",
-            "forbid.*" => "entries to forbid",
-            "forbid.*.name" => "name",
-            "forbid.*.type" => "type",
+            "add.*" => "ability to add",
+            "remove.*" => "ability to remove",
+            "forbid.*" => "ability to to forbid",
         ];
     }
 }

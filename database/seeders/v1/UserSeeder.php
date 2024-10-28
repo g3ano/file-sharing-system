@@ -5,6 +5,7 @@ namespace Database\Seeders\v1;
 use App\Enums\AbilityEnum;
 use App\Models\User;
 use App\Helpers\Slugable;
+use App\Models\File;
 use App\Models\Project;
 use App\Models\Workspace;
 use Illuminate\Database\Seeder;
@@ -49,11 +50,7 @@ class UserSeeder extends Seeder
                 AbilityEnum::USER_ABILITY_SPECIAL_MANAGE->value,
 
                 AbilityEnum::USER_WORKSPACE_LIST->value,
-                AbilityEnum::USER_WORKSPACE_ADD->value,
-                AbilityEnum::USER_WORKSPACE_REMOVE->value,
                 AbilityEnum::USER_PROJECT_LIST->value,
-                AbilityEnum::USER_PROJECT_ADD->value,
-                AbilityEnum::USER_PROJECT_REMOVE->value,
             ],
             User::class
         );
@@ -101,6 +98,20 @@ class UserSeeder extends Seeder
             ],
             Project::class
         );
+        BouncerFacade::allow($admin)->to(
+            [
+                AbilityEnum::LIST->value,
+                AbilityEnum::VIEW->value,
+                AbilityEnum::UPDATE->value,
+
+                AbilityEnum::DELETE->value,
+                AbilityEnum::RESTORE->value,
+                AbilityEnum::FORCE_DELETE->value,
+
+                AbilityEnum::FILE_DOWNLOAD->value,
+            ],
+            File::class
+        );
 
         BouncerFacade::allow($manager)->to(
             [
@@ -112,11 +123,7 @@ class UserSeeder extends Seeder
                 AbilityEnum::USER_ABILITY_MANAGE->value,
 
                 AbilityEnum::USER_WORKSPACE_LIST->value,
-                AbilityEnum::USER_WORKSPACE_ADD->value,
-                AbilityEnum::USER_WORKSPACE_REMOVE->value,
                 AbilityEnum::USER_PROJECT_LIST->value,
-                AbilityEnum::USER_PROJECT_ADD->value,
-                AbilityEnum::USER_PROJECT_REMOVE->value,
             ],
             User::class
         );
@@ -135,6 +142,7 @@ class UserSeeder extends Seeder
                 AbilityEnum::UPDATE->value,
 
                 AbilityEnum::USER_ABILITY_MANAGE->value,
+                AbilityEnum::USER_ABILITY_SPECIAL_MANAGE->value,
 
                 AbilityEnum::WORKSPACE_MEMBER_LIST->value,
                 AbilityEnum::WORKSPACE_MEMBER_ADD->value,
@@ -153,6 +161,7 @@ class UserSeeder extends Seeder
                 AbilityEnum::UPDATE->value,
 
                 AbilityEnum::USER_ABILITY_MANAGE->value,
+                AbilityEnum::USER_ABILITY_SPECIAL_MANAGE->value,
 
                 AbilityEnum::PROJECT_MEMBER_LIST->value,
                 AbilityEnum::PROJECT_MEMBER_ADD->value,
@@ -162,6 +171,18 @@ class UserSeeder extends Seeder
                 AbilityEnum::PROJECT_FILES_REMOVE->value,
             ],
             Project::class
+        );
+        BouncerFacade::allow($admin)->to(
+            [
+                AbilityEnum::LIST->value,
+                AbilityEnum::VIEW->value,
+                AbilityEnum::UPDATE->value,
+
+                AbilityEnum::DELETE->value,
+
+                AbilityEnum::FILE_DOWNLOAD->value,
+            ],
+            File::class
         );
     }
 }
