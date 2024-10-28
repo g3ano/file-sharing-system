@@ -7,10 +7,10 @@ use App\Models\Project;
 use App\Models\Workspace;
 use App\Enums\AbilityEnum;
 use App\Enums\ResourceEnum;
-use Illuminate\Database\Eloquent\Relations\MorphTo;
+use App\Models\File;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
-use RuntimeException;
+use Illuminate\Support\Facades\Hash;
 use Silber\Bouncer\BouncerFacade;
 use Silber\Bouncer\Database\Models;
 use Throwable;
@@ -24,7 +24,7 @@ class UserService extends BaseService
         ?User $auth = null,
         ?User &$target = null,
         bool $isAuth = false
-    ): void {
+    ) {
         if (!$target || !$auth) {
             return;
         }
@@ -40,15 +40,6 @@ class UserService extends BaseService
                     ),
                     AbilityEnum::CREATE->value => $auth->can(
                         AbilityEnum::CREATE->value,
-                        User::class
-                    ),
-                    AbilityEnum::USER_ABILITY_MANAGE->value => $auth->can(
-                        AbilityEnum::USER_ABILITY_MANAGE->value,
-                        User::class
-                    ),
-                    AbilityEnum::USER_ABILITY_SPECIAL_MANAGE
-                        ->value => $auth->can(
-                        AbilityEnum::USER_ABILITY_SPECIAL_MANAGE->value,
                         User::class
                     ),
                 ],
@@ -70,6 +61,12 @@ class UserService extends BaseService
                     AbilityEnum::CREATE->value => $auth->can(
                         AbilityEnum::CREATE->value,
                         Project::class
+                    ),
+                ],
+                ResourceEnum::FILE->value => [
+                    AbilityEnum::LIST->value => $auth->can(
+                        AbilityEnum::LIST->value,
+                        File::class
                     ),
                 ],
             ];
@@ -107,28 +104,12 @@ class UserService extends BaseService
                     AbilityEnum::USER_WORKSPACE_LIST->value,
                     $target
                 ),
-                AbilityEnum::USER_WORKSPACE_ADD->value => $auth->can(
-                    AbilityEnum::USER_WORKSPACE_ADD->value,
-                    $target
-                ),
-                AbilityEnum::USER_WORKSPACE_REMOVE->value => $auth->can(
-                    AbilityEnum::USER_WORKSPACE_REMOVE->value,
-                    $target
-                ),
                 AbilityEnum::USER_PROJECT_LIST->value => $auth->is($target)
                     ? true
                     : $auth->can(
                         AbilityEnum::USER_PROJECT_LIST->value,
                         $target
                     ),
-                AbilityEnum::USER_PROJECT_ADD->value => $auth->can(
-                    AbilityEnum::USER_PROJECT_ADD->value,
-                    $target
-                ),
-                AbilityEnum::USER_PROJECT_REMOVE->value => $auth->can(
-                    AbilityEnum::USER_PROJECT_REMOVE->value,
-                    $target
-                ),
             ];
         }
 
@@ -141,7 +122,7 @@ class UserService extends BaseService
     public function assignRegisteredUserAbilities(
         User $registeredUser,
         string|array $additional = []
-    ): void {
+    ) {
         $additional = (array) $additional;
 
         BouncerFacade::allow($registeredUser)->to(
@@ -160,6 +141,17 @@ class UserService extends BaseService
             [AbilityEnum::VIEW->value, ...$additional],
             User::class
         );
+        BouncerFacade::allow($registeredUser)->to(
+            [
+                AbilityEnum::VIEW->value,
+                AbilityEnum::UPDATE->value,
+                AbilityEnum::DELETE->value,
+
+                AbilityEnum::FILE_DOWNLOAD->value,
+                ...$additional,
+            ],
+            File::class
+        );
     }
 
     /**
@@ -168,26 +160,32 @@ class UserService extends BaseService
     public function getUserList(
         int $page = 1,
         int $limit = 10,
-        string $orderBy = "created_at",
+        string $orderByField = "created_at",
         string $orderByDirection = "asc"
-    ): LengthAwarePaginator {
-        return User::query()
-            ->orderBy($orderBy, $orderByDirection)
+    ) {
+        /**
+         * @var LengthAwarePaginator
+         */
+        $users = User::query()
+            ->orderBy($orderByField, $orderByDirection)
             ->paginate(perPage: $limit, page: $page);
+
+        return $users;
     }
 
     public function searchUserList(
         string $searchValue,
         int $page = 1,
         int $limit = 10,
-        string $orderBy = "created_at",
-        string $orderByDir = "asc",
-        array $includes = []
-    ): LengthAwarePaginator {
+        string $orderByField = "created_at",
+        string $orderByDirection = "asc"
+    ) {
         $searchValue = "%{$searchValue}%";
 
-        return User::query()
-            ->with($includes)
+        /**
+         * @var LengthAwarePaginator
+         */
+        $users = User::query()
             ->whereAny(
                 [
                     "first_name",
@@ -199,8 +197,10 @@ class UserService extends BaseService
                 "ILIKE",
                 $searchValue
             )
-            ->orderBy($orderBy, $orderByDir)
+            ->orderBy($orderByField, $orderByDirection)
             ->paginate(perPage: $limit, page: $page);
+
+        return $users;
     }
 
     /**
@@ -209,12 +209,17 @@ class UserService extends BaseService
     public function getUserDeletedList(
         int $page = 1,
         int $limit = 10,
-        string $orderBy = "created_at",
+        string $orderByField = "created_at",
         string $orderByDirection = "asc"
-    ): LengthAwarePaginator {
-        return User::onlyTrashed()
-            ->orderBy($orderBy, $orderByDirection)
+    ) {
+        /**
+         * @var LengthAwarePaginator
+         */
+        $users = User::onlyTrashed()
+            ->orderBy($orderByField, $orderByDirection)
             ->paginate(perPage: $limit, page: $page);
+
+        return $users;
     }
 
     /**
@@ -224,14 +229,15 @@ class UserService extends BaseService
         string $searchValue,
         int $page = 1,
         int $limit = 10,
-        string $orderBy = "created_at",
-        string $orderByDir = "asc",
-        array $includes = []
-    ): LengthAwarePaginator {
+        string $orderByField = "created_at",
+        string $orderByDirection = "asc"
+    ) {
         $searchValue = "%{$searchValue}%";
 
-        return User::onlyTrashed()
-            ->with($includes)
+        /**
+         * @var LengthAwarePaginator
+         */
+        $users = User::onlyTrashed()
             ->whereAny(
                 [
                     "first_name",
@@ -243,46 +249,17 @@ class UserService extends BaseService
                 "ILIKE",
                 $searchValue
             )
-            ->orderBy($orderBy, $orderByDir)
+            ->orderBy($orderByField, $orderByDirection)
             ->paginate(perPage: $limit, page: $page);
-    }
 
-    /**
-     * Adds workspaces to user.
-     *
-     * @throws RuntimeException
-     */
-    public function addUserWorkspaces(User $user, array $workspaces): void
-    {
-        if (!array_is_list($workspaces)) {
-            $this->failedAtRuntime(__("workspace.members.workspaces"), 422);
-        }
-
-        $user->workspaces()->attach($workspaces);
-    }
-
-    /**
-     * Removes workspaces to user.
-     *
-     * @throws RuntimeException
-     */
-    public function removeUserWorkspaces(User $user, array $workspaces): void
-    {
-        if (!array_is_list($workspaces)) {
-            $this->failedAtRuntime(__("workspace.members.workspaces"), 422);
-        }
-
-        $user->workspaces()->detach($workspaces);
+        return $users;
     }
 
     /**
      * Gets paginated list of user abilities.
      */
-    public function getUserAbilities(
-        User $user,
-        int $page = 1,
-        int $limit = 10
-    ): LengthAwarePaginator {
+    public function getUserAbilities(User $user, int $page = 1, int $limit = 10)
+    {
         /**
          * @var LengthAwarePaginator
          */
@@ -291,9 +268,10 @@ class UserService extends BaseService
             ->with("abilitable")
             ->paginate(perPage: $limit, page: $page);
 
-        $abilities = $abilities->through(function ($item) {
-            $this->getUserAbilityContext($item);
-            return $item;
+        $abilities = $abilities->through(function ($ability) {
+            $this->getUserAbilityContext($ability);
+
+            return $ability;
         });
 
         return $abilities;
@@ -301,10 +279,10 @@ class UserService extends BaseService
 
     public function searchUserAbilities(
         User $user,
-        string $searchValue,
+        string $searchValue = "",
         int $page = 1,
         int $limit = 10
-    ): LengthAwarePaginator {
+    ) {
         $searchValue = "%{$searchValue}%";
         $abilities = Models::table("abilities");
 
@@ -315,7 +293,11 @@ class UserService extends BaseService
             ->prepareAbilitiesBuilderFor()
             ->with("abilitable")
             ->whereAny(
-                ["{$abilities}.name", "{$abilities}.title", "{$abilities}.entity_type"],
+                [
+                    "{$abilities}.name",
+                    "{$abilities}.title",
+                    "{$abilities}.entity_type",
+                ],
                 "ILIKE",
                 $searchValue
             )
@@ -336,26 +318,26 @@ class UserService extends BaseService
         User $user,
         int $page = 1,
         int $limit = 10,
-        ?string $type = null
-    ): LengthAwarePaginator {
-        $type = ResourceEnum::tryFrom($type)
-            ? ResourceEnum::tryFrom($type)->class()
-            : $type;
+        ?string $scope = null
+    ) {
+        $scope = ResourceEnum::tryFrom($scope)
+            ? ResourceEnum::tryFrom($scope)->class()
+            : $scope;
 
         /**
          * @var LengthAwarePaginator
          */
-        $users = $user
-            ->prepareAbilitiesBuilderFor($type, true)
+        $abilities = $user
+            ->prepareAbilitiesBuilderFor($scope, true)
             ->with("abilitable")
             ->paginate(perPage: $limit, page: $page);
 
-        $users = $users->through(function ($item) {
+        $abilities = $abilities->through(function ($item) {
             $this->getUserAbilityContext($item);
             return $item;
         });
 
-        return $users;
+        return $abilities;
     }
 
     /**
@@ -366,7 +348,7 @@ class UserService extends BaseService
         User $target,
         int $page = 1,
         int $limit = 10
-    ): LengthAwarePaginator {
+    ) {
         /**
          * @var LengthAwarePaginator
          */
@@ -386,7 +368,7 @@ class UserService extends BaseService
     /**
      * Update user global abilities, i.e: whole class and all instances level.
      */
-    public function updateUserGlobalAbilities(User $user, array $data): void
+    public function updateUserGlobalAbilities(User $user, array $data)
     {
         $this->formatUpdateUserGlobalAbilitiesData($data);
 
@@ -407,6 +389,18 @@ class UserService extends BaseService
         $this->handleAddGlobalAbilitiesToUser($user, $abilitiesToAdd);
         $this->handleRemoveGlobalAbilitiesFromUser($user, $abilitiesToRemove);
         $this->handleForbidGlobalAbilitiesFromUser($user, $abilitiesToForbid);
+    }
+
+    /**
+     * Update user.
+     */
+    public function updateUser(User $user, array $data)
+    {
+        if (array_key_exists("password", $data)) {
+            $data["password"] = Hash::make($data["password"]);
+        }
+
+        return $user->update($data);
     }
 
     /**
@@ -470,7 +464,7 @@ class UserService extends BaseService
      */
     protected function formatUpdateUserGlobalAbilitiesData(
         array &$abilitiesData
-    ): void {
+    ) {
         $abilitiesData = array_map(function (array $abilityGroup) {
             return $this->formatUpdateUserGlobalAbilitiesDataGroup(
                 $abilityGroup
@@ -483,12 +477,9 @@ class UserService extends BaseService
     /**
      * Remove duplicate abilities from update user global abilities
      * data groups.
-     *
-     * @param array<int,mixed> $data
      */
-    protected function removeDuplicateAbilitiesGlobalFromData(
-        array &$data
-    ): void {
+    protected function removeDuplicateAbilitiesGlobalFromData(array &$data)
+    {
         //Removes any duplicate abilities between `add`, `remove`
         //and `forbid` groups from `add` group
         foreach ($data["add"] as $type => $abilities) {
@@ -524,7 +515,7 @@ class UserService extends BaseService
      */
     protected function formatUpdateUserGlobalAbilitiesDataGroup(
         array $abilityGroup
-    ): array {
+    ) {
         $entityTypes = array_unique(array_column($abilityGroup, "type"));
         $formattedAbilities = [];
 
@@ -537,7 +528,9 @@ class UserService extends BaseService
                 array_unique(array_column($abilitiesByType, "name"))
             );
 
-            $formattedAbilities[ResourceEnum::from($entityType)->class()] = $uniqueAbilitiesNamesByType;
+            $formattedAbilities[
+                ResourceEnum::from($entityType)->class()
+            ] = $uniqueAbilitiesNamesByType;
         }
 
         return $formattedAbilities;
@@ -551,7 +544,7 @@ class UserService extends BaseService
     protected function handleAddGlobalAbilitiesToUser(
         User $user,
         array $abilitiesToAdd
-    ): void {
+    ) {
         if (empty($abilitiesToAdd)) {
             return;
         }
@@ -578,7 +571,7 @@ class UserService extends BaseService
     protected function handleRemoveGlobalAbilitiesFromUser(
         User $user,
         array $abilitiesToRemove
-    ): void {
+    ) {
         if (empty($abilitiesToRemove)) {
             return;
         }
@@ -604,7 +597,7 @@ class UserService extends BaseService
     protected function handleForbidGlobalAbilitiesFromUser(
         User $user,
         array $abilitiesToForbid
-    ): void {
+    ) {
         if (empty($abilitiesToForbid)) {
             return;
         }

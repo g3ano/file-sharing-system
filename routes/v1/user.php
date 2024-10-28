@@ -3,6 +3,8 @@
 use App\Http\Controllers\v1\UserController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\v1\Auth\RegisteredUserController;
+use App\Http\Controllers\v1\ProjectController;
+use App\Http\Controllers\v1\WorkspaceController;
 
 Route::prefix("users")
     ->controller(UserController::class)
@@ -14,18 +16,19 @@ Route::prefix("users")
                 RegisteredUserController::class,
                 "store",
             ])->name("register");
-            Route::delete("/delete/{userID}", "deleteUser");
-            Route::post("/restore/{userID}", "restoreUser");
-            Route::delete("/force-delete/{userID}", "forceDeleteUser");
+
+            Route::post("/{userID}/restore", "restoreUser");
+            Route::put("/{userID}/update", "updateUser");
+            Route::delete("/{userID}/delete", "deleteUser");
+            Route::delete("/{userID}/force-delete", "forceDeleteUser");
 
             Route::get("/me", "getAuthUser");
-            Route::get("/list", "getUserList");
-            Route::get("/list/deleted", "getDeletedUserList");
-            Route::get("/count/list", "getUserListCount");
-            Route::get("/count/list/deleted", "getDeletedUserListCount");
 
-            Route::post("/{userID}/workspaces/add", "addUserWorkspaces");
-            Route::post("/{userID}/workspaces/remove", "removeUserWorkspaces");
+            Route::get("/list", "getUserList");
+            Route::get("/list/count", "getUserListCount");
+
+            Route::get("/deleted", "getDeletedUserList");
+            Route::get("/deleted/count", "getDeletedUserListCount");
 
             Route::get("/search", "searchUserList");
             Route::get("/search/deleted", "searchDeletedUserList");
@@ -44,6 +47,16 @@ Route::prefix("users")
                 "/{userID}/abilities/{targetUserID}",
                 "updateUserAbilitiesForUser"
             );
+
+            Route::get("/{userID}/workspaces", [
+                WorkspaceController::class,
+                "getUserWorkspaceList",
+            ]);
+
+            Route::get("/{userID}/projects", [
+                ProjectController::class,
+                "getUserProjectList",
+            ]);
             Route::get("/{userID}", "getUserByID");
         });
     });

@@ -16,4 +16,5 @@ return [
     "search" => [
         "not_found" => "no search result is found",
     ],
+    "update" => "Failed to update user.",
 ];
