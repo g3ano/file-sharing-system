@@ -24,12 +24,17 @@ class UpdateWorkspaceRequest extends BaseRequest
     public function rules(): array
     {
         return [
-            'name' => [
-                'bail', 'required', 'string', 'max:255', Rule::unique(Workspace::class, 'name'),
+            "name" => [
+                "bail",
+                "required",
+                "string",
+                "max:255",
+                Rule::unique(Workspace::class, "name")->ignore(
+                    $this->workspaceID,
+                    "id"
+                ),
             ],
-            'description' => [
-                'bail', 'required', 'string', 'max:1000',
-            ],
+            "description" => ["bail", "required", "string", "max:1000"],
         ];
     }
 }

@@ -42,6 +42,14 @@ class WorkspaceResource extends BaseResource
 
         $result["isOwner"] = $this->whenNotNull($this->isOwner);
 
+        $result["deleted"] = is_null($this->deleted_at)
+            ? new MissingValue()
+            : [
+                "isDeleted" => true,
+                "deletedAt" => $this->deleted_at,
+                "deletedAtFormatted" => $this->deleted_at->format("F j, Y"),
+            ];
+
         return $result ?: new MissingValue();
     }
 }

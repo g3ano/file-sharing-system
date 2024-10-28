@@ -15,4 +15,5 @@ return [
         "restore" => "Failed to restore deleted workspace.",
         "force_delete" => "Failed to force delete deleted workspace.",
     ],
+    "update" => "Failed to update workspace.",
 ];

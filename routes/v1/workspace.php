@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\v1\ProjectController;
+use App\Http\Controllers\v1\StorageController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\v1\WorkspaceController;
 
@@ -7,21 +9,39 @@ Route::prefix("workspaces")
     ->controller(WorkspaceController::class)
     ->middleware(["auth:sanctum"])
     ->group(function () {
-        Route::post("/new", "createWorkspace");
+        Route::post("/create", "createWorkspace");
+
+        Route::controller(StorageController::class)->group(function () {
+            Route::get("/list/storage/used", "getWorkspaceListUsedSpace");
+            Route::get(
+                "/list/{workspaceID}/storage/used",
+                "getWorkspaceUsedSpace"
+            );
+
+            Route::get(
+                "/deleted/{workspaceID}/storage/used",
+                "getDeletedWorkspaceUsedSpace"
+            );
+            Route::get(
+                "/deleted/storage/used",
+                "getDeletedWorkspaceListUsedSpace"
+            );
+        });
+
         Route::get("/list", "getWorkspaceList");
+        Route::get("/list/count", "getWorkspaceListCount");
         Route::get("/list/{workspaceID}", "getWorkspaceByID");
-        Route::get("/count/list", "getWorkspaceListCount");
 
         Route::get("/deleted", "getDeletedWorkspaceList");
+        Route::get("/deleted/count", "getDeletedWorkspaceListCount");
         Route::get("/deleted/{workspaceID}", "getDeletedWorkspaceByID");
-
-        Route::get("/user/{userID}", "getUserWorkspaceList");
 
         Route::get("/search", "searchWorkspaceList");
 
-        Route::delete("/delete/{workspaceID}", "deleteWorkspace");
-        Route::delete("/force-delete/{workspaceID}", "forceDeleteWorkspace");
-        Route::post("/restore/{workspaceID}", "restoreWorkspace");
+        Route::put("/{workspaceID}/update", "updateWorkspace");
+        Route::delete("/{workspaceID}/delete", "deleteWorkspace");
+        Route::delete("/{workspaceID}/force-delete", "forceDeleteWorkspace");
+        Route::post("/{workspaceID}/restore", "restoreWorkspace");
 
         Route::get("/{workspaceID}/members", "getWorkspaceMembers");
         Route::post("/{workspaceID}/members/add", "addWorkspaceMembers");
@@ -34,4 +54,8 @@ Route::prefix("workspaces")
             "/{workspaceID}/members/{userID}/abilities",
             "updateWorkspaceMemberAbilities"
         );
+        Route::get("/{workspaceID}/projects", [
+            ProjectController::class,
+            "getWorkspaceProjectList",
+        ]);
     });

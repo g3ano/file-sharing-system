@@ -92,15 +92,17 @@ class WorkspaceService extends BaseService
     public function getWorkspaceList(
         string|int $page,
         string|int $limit,
-        string $orderBy = "created_at",
-        string $orderByDir = "asc",
-        array $includes = []
-    ): LengthAwarePaginator {
-        return Workspace::query()
-            ->with($includes)
-            ->select("workspaces.*")
-            ->orderBy($orderBy, $orderByDir)
+        string $orderByField = "created_at",
+        string $orderByDirection = "asc"
+    ) {
+        /**
+         * @var LengthAwarePaginator
+         */
+        $workspaces = Workspace::query()
+            ->orderBy($orderByField, $orderByDirection)
             ->paginate(perPage: $limit, page: $page);
+
+        return $workspaces;
     }
 
     /**
@@ -109,16 +111,18 @@ class WorkspaceService extends BaseService
     public function getDeletedWorkspaceList(
         string|int $page,
         string|int $limit,
-        string $orderBy = "created_at",
-        string $orderByDir = "asc",
-        array $includes = []
-    ): LengthAwarePaginator {
-        return Workspace::query()
-            ->with($includes)
+        string $orderByField = "created_at",
+        string $orderByDirection = "asc"
+    ) {
+        /**
+         * @var LengthAwarePaginator
+         */
+        $workspaces = Workspace::query()
             ->onlyTrashed()
-            ->select("workspaces.*")
-            ->orderBy($orderBy, $orderByDir)
+            ->orderBy($orderByField, $orderByDirection)
             ->paginate(perPage: $limit, page: $page);
+
+        return $workspaces;
     }
 
     /**
@@ -128,17 +132,43 @@ class WorkspaceService extends BaseService
         string $searchValue,
         int $page = 1,
         int $limit = 10,
-        string $orderBy = "created_at",
-        string $orderByDir = "asc",
-        array $includes = []
-    ): LengthAwarePaginator {
+        string $orderByField = "created_at",
+        string $orderByDirection = "asc"
+    ) {
         $searchValue = "%{$searchValue}%";
 
-        return Workspace::query()
-            ->with($includes)
+        /**
+         * @var LengthAwarePaginator
+         */
+        $workspaces = Workspace::query()
             ->whereAny(["name", "description"], "ILIKE", $searchValue)
-            ->orderBy($orderBy, $orderByDir)
+            ->orderBy($orderByField, $orderByDirection)
             ->paginate(perPage: $limit, page: $page);
+
+        return $workspaces;
+    }
+
+    /**
+     * Search deleted workspace list.
+     */
+    public function searchDeletedWorkspaceList(
+        string $searchValue,
+        int $page = 1,
+        int $limit = 10,
+        string $orderByField = "created_at",
+        string $orderByDirection = "asc"
+    ) {
+        $searchValue = "%{$searchValue}%";
+
+        /**
+         * @var LengthAwarePaginator
+         */
+        $workspaces = Workspace::onlyTrashed()
+            ->whereAny(["name", "description"], "ILIKE", $searchValue)
+            ->orderBy($orderByField, $orderByDirection)
+            ->paginate(perPage: $limit, page: $page);
+
+        return $workspaces;
     }
 
     /**
@@ -148,12 +178,11 @@ class WorkspaceService extends BaseService
         User $user,
         int $page = 1,
         int $limit = 10,
-        array $includes = [],
-        ?string $searchValue = null,
+        string $searchValue = "",
         string $orderBy = "created_at",
         string $orderByDirection = "asc"
     ) {
-        $query = $user->workspaces()->with($includes);
+        $query = $user->workspaces()->orderByPivot($orderBy, $orderByDirection);
 
         if ($searchValue) {
             $searchValue = "%$searchValue%";
@@ -164,11 +193,12 @@ class WorkspaceService extends BaseService
             );
         }
 
-        $result = $query
-            ->orderByPivot($orderBy, $orderByDirection)
-            ->paginate(perPage: $limit, page: $page);
+        /**
+         * @var LengthAwarePaginator
+         */
+        $workspaces = $query->paginate(perPage: $limit, page: $page);
 
-        return $result;
+        return $workspaces;
     }
 
     public function getUserCapabilitiesForWorkspace(
@@ -236,29 +266,6 @@ class WorkspaceService extends BaseService
     }
 
     /**
-     * Get user capabilities for workspace members.
-     */
-    public function getUserCapabilitiesForWorkspaceMember(
-        User $auth,
-        User &$member,
-        array $additional = []
-    ) {
-        $capabilities = [
-            AbilityEnum::VIEW->value => $auth->can(
-                AbilityEnum::VIEW->value,
-                $member
-            ),
-            AbilityEnum::USER_WORKSPACE_REMOVE->value => $auth->can(
-                AbilityEnum::USER_WORKSPACE_REMOVE->value,
-                $member
-            ),
-            ...$additional,
-        ];
-
-        $member->capabilities = $capabilities;
-    }
-
-    /**
      * Writes state data about workspace member related to workspace.
      */
     public function getWorkspaceMemberState(
@@ -286,11 +293,19 @@ class WorkspaceService extends BaseService
         int $page = 1,
         int $limit = 10,
         bool $broad = false
-    ): LengthAwarePaginator {
-        return $user
+    ) {
+        /**
+         * @var LengthAwarePaginator
+         */
+        $abilities = $user
             ->prepareAbilitiesBuilderFor($workspace, broad: $broad)
             ->with("abilitable")
             ->paginate(perPage: $limit, page: $page);
+
+        $abilities = $abilities->through(function ($ability) {
+            $this->getUserAbilityContext($ability);
+            return $ability;
+        });
     }
 
     /**

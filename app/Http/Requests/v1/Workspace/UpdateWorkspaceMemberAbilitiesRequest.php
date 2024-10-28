@@ -74,6 +74,7 @@ class UpdateWorkspaceMemberAbilitiesRequest extends BaseRequest
         return [
             "add.*" => "ability to add",
             "remove.*" => "ability to remove",
+            "forbid.*" => "ability to to forbid",
         ];
     }
 }
