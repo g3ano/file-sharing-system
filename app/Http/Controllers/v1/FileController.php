@@ -488,7 +488,14 @@ class FileController extends Controller
 
         $data = $request->validated();
 
-        $this->fileService->updateUserAbilitiesForFile($file, $user, $data);
+        try {
+            $this->fileService->updateUserAbilitiesForFile($file, $user, $data);
+        } catch (Throwable $e) {
+            $this->failed(
+                $this->parseExceptionError($e),
+                $this->parseExceptionCode($e)
+            );
+        }
 
         return $this->succeedWithStatus();
     }

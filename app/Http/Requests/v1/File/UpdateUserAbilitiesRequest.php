@@ -19,6 +19,9 @@ class UpdateUserAbilitiesRequest extends BaseRequest
         AbilityEnum::RESTORE->value,
         AbilityEnum::FORCE_DELETE->value,
 
+        AbilityEnum::USER_ABILITY_MANAGE->value,
+        AbilityEnum::USER_ABILITY_SPECIAL_MANAGE->value,
+
         AbilityEnum::FILE_DOWNLOAD->value,
     ];
 
