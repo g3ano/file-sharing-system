@@ -113,6 +113,9 @@ class UserSeeder extends Seeder
                 AbilityEnum::RESTORE->value,
                 AbilityEnum::FORCE_DELETE->value,
 
+                AbilityEnum::USER_ABILITY_MANAGE->value,
+                AbilityEnum::USER_ABILITY_SPECIAL_MANAGE->value,
+
                 AbilityEnum::FILE_DOWNLOAD->value,
             ],
             File::class
@@ -189,6 +192,8 @@ class UserSeeder extends Seeder
                 AbilityEnum::UPDATE->value,
 
                 AbilityEnum::DELETE->value,
+
+                AbilityEnum::USER_ABILITY_MANAGE->value,
 
                 AbilityEnum::FILE_DOWNLOAD->value,
             ],

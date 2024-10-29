@@ -23,7 +23,11 @@ class DatabaseSeeder extends Seeder
         $this->call([BouncerSeeder::class, UserSeeder::class]);
 
         $workspaces = Workspace::factory()->count(10);
-        User::factory()->count(20)->hasAttached($workspaces)->create();
-        Project::factory()->count(20)->create();
+        $projects = Project::factory()->count(20)->create();
+        User::factory()
+            ->count(20)
+            ->hasAttached($projects)
+            ->hasAttached($workspaces)
+            ->create();
     }
 }

@@ -9,6 +9,8 @@ use App\Models\User;
 use Illuminate\Http\Response;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Silber\Bouncer\BouncerFacade;
@@ -23,27 +25,40 @@ class FileService extends BaseService
      */
     public function createFile(Project $project, User $user, UploadedFile $file)
     {
-        [
-            "path" => $path,
-            "hash" => $hash,
-        ] = $this->saveFile($file);
+        try {
+            DB::beginTransaction();
+            [
+                "path" => $path,
+                "hash" => $hash,
+            ] = $this->saveFile($file);
 
-        [
-            "name" => $name,
-            "type" => $type,
-            "extension" => $extension,
-            "size" => $size,
-        ] = $this->getFileData($file);
+            [
+                "name" => $name,
+                "type" => $type,
+                "extension" => $extension,
+                "size" => $size,
+            ] = $this->getFileData($file);
 
-        $metadata = $project->files()->create([
-            "name" => $name,
-            "extension" => $extension,
-            "type" => $type,
-            "size" => $size,
-            "path" => $path,
-            "hash" => $hash,
-            "user_id" => $user->id,
-        ]);
+            $this->ensureUniqueFileName($project, $name);
+
+            $metadata = $project->files()->create([
+                "name" => $name,
+                "extension" => $extension,
+                "type" => $type,
+                "size" => $size,
+                "path" => $path,
+                "hash" => $hash,
+                "user_id" => $user->id,
+            ]);
+
+            DB::commit();
+        } catch (Throwable $e) {
+            DB::rollBack();
+
+            Storage::delete($path);
+
+            $this->failedAtRuntime($e->getMessage(), $e->getCode());
+        }
 
         return $metadata;
     }
@@ -91,6 +106,14 @@ class FileService extends BaseService
             ),
             AbilityEnum::FORCE_DELETE->value => $auth->can(
                 AbilityEnum::FORCE_DELETE->value,
+                $file
+            ),
+            AbilityEnum::USER_ABILITY_MANAGE->value => $auth->can(
+                AbilityEnum::USER_ABILITY_MANAGE->value,
+                $file
+            ),
+            AbilityEnum::USER_ABILITY_SPECIAL_MANAGE->value => $auth->can(
+                AbilityEnum::USER_ABILITY_SPECIAL_MANAGE->value,
                 $file
             ),
             AbilityEnum::FILE_DOWNLOAD->value => $auth->can(
@@ -417,5 +440,17 @@ class FileService extends BaseService
             "-",
             pathinfo($filename, PATHINFO_FILENAME)
         );
+    }
+
+    /**
+     * Prevent duplicate name within the project and update name
+     */
+    public function ensureUniqueFileName(Project $project, string &$name)
+    {
+        if (!$project->files()->where("name", $name)->exists()) {
+            return;
+        }
+
+        $name .= "-" . Carbon::now()->timestamp;
     }
 }

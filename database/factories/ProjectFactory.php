@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Helpers\Slugable;
+use App\Models\Workspace;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -20,7 +21,7 @@ class ProjectFactory extends Factory
     public function definition(): array
     {
         return [
-            "workspace_id" => fake()->numberBetween(1, 10),
+            "workspace_id" => Workspace::factory()->create(),
             "user_id" => fake()->numberBetween(1, 10),
             "name" => fake()->sentence(2),
             "description" => fake()->text(100),
