@@ -14,6 +14,7 @@ use App\Models\File;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\FileService;
+use App\Services\ProjectService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
@@ -296,6 +297,45 @@ class FileController extends Controller
         });
 
         return new FileCollection($files);
+    }
+
+    /**
+     * Deletes file from a project.
+     */
+    public function deleteProjectFile(string $projectID, string $fileID)
+    {
+        $auth = User::user();
+        $project = Project::query()->where("id", $projectID)->first();
+
+        if (
+            !$project ||
+            !(new ProjectService())->isUserProjectMember($project, $auth) ||
+            !$auth->can(AbilityEnum::PROJECT_FILES_REMOVE->value, $project)
+        ) {
+            $this->failedAsNotFound("project");
+        }
+
+        return $this->deleteFile($fileID);
+    }
+
+    /**
+     * Adds file to project.
+     */
+    public function addProjectFile(
+        CreateFileRequest $request,
+        string $projectID
+    ) {
+        $auth = User::user();
+        $project = Project::query()->where("id", $projectID)->first();
+
+        if (
+            !$project ||
+            !(new ProjectService())->isUserProjectMember($project, $auth)
+        ) {
+            $this->failedAsNotFound("project");
+        }
+
+        return $this->createFile($request);
     }
 
     /**

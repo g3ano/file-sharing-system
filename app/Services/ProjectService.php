@@ -246,15 +246,26 @@ class ProjectService extends BaseService
         int $page = 1,
         int $limit = 10,
         string $orderByField = "created_at",
-        string $orderByDirection = "asc"
+        string $orderByDirection = "asc",
+        string $searchValue = ""
     ) {
+        $query = $user
+            ->projects()
+            ->orderByPivot($orderByField, $orderByDirection);
+
+        if ($searchValue) {
+            $searchValue = "%$searchValue%";
+            $query = $query->whereAny(
+                ["name", "description"],
+                "ILIKE",
+                $searchValue
+            );
+        }
+
         /**
          * @var LengthAwarePaginator
          */
-        $projects = $user
-            ->projects()
-            ->orderByPivot($orderByField, $orderByDirection)
-            ->paginate(perPage: $limit, page: $page);
+        $projects = $query->paginate(perPage: $limit, page: $page);
 
         return $projects;
     }
@@ -267,15 +278,26 @@ class ProjectService extends BaseService
         int $page = 1,
         int $limit = 10,
         string $orderByField = "created_at",
-        string $orderByDirection = "asc"
+        string $orderByDirection = "asc",
+        string $searchValue = ""
     ) {
+        $query = $workspace
+            ->projects()
+            ->orderByPivot($orderByField, $orderByDirection);
+
+        if ($searchValue) {
+            $searchValue = "%$searchValue%";
+            $query = $query->whereAny(
+                ["name", "description"],
+                "ILIKE",
+                $searchValue
+            );
+        }
+
         /**
          * @var LengthAwarePaginator
          */
-        $projects = $workspace
-            ->projects()
-            ->orderBy($orderByField, $orderByDirection)
-            ->paginate(perPage: $limit, page: $page);
+        $projects = $query->paginate(perPage: $limit, page: $page);
 
         return $projects;
     }

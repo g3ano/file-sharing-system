@@ -532,9 +532,9 @@ class WorkspaceController extends Controller
             $user,
             $page,
             $limit,
-            $searchValue,
             $orderByField,
-            $orderByDirection
+            $orderByDirection,
+            $searchValue
         );
 
         $workspaces = $workspaces->through(function (Workspace $workspace) use (

@@ -54,8 +54,13 @@ Route::prefix("workspaces")
             "/{workspaceID}/members/{userID}/abilities",
             "updateWorkspaceMemberAbilities"
         );
-        Route::get("/{workspaceID}/projects", [
-            ProjectController::class,
-            "getWorkspaceProjectList",
-        ]);
+
+        Route::controller(ProjectController::class)->group(function () {
+            Route::get("/{workspaceID}/projects", "getWorkspaceProjectList");
+            Route::post("/{workspaceID}/projects/add", "addWorkspaceProject");
+            Route::delete(
+                "/{workspaceID}/projects/{projectID}/delete",
+                "deleteWorkspaceProject"
+            );
+        });
     });

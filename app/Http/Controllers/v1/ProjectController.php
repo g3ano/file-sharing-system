@@ -550,13 +550,15 @@ class ProjectController extends Controller
 
         [$page, $limit] = $this->getPaginatorMetadata($request);
         [$orderBy, $orderByDirection] = $this->getOrderByMeta($request);
+        $searchValue = $request->query("searchValue") ?? "";
 
         $projects = $this->projectService->getUserProjectList(
             $user,
             $page,
             $limit,
             $orderBy,
-            $orderByDirection
+            $orderByDirection,
+            $searchValue
         );
 
         $projects = $projects->through(function (Project $project) use ($auth) {
@@ -589,13 +591,15 @@ class ProjectController extends Controller
 
         [$page, $limit] = $this->getPaginatorMetadata($request);
         [$orderBy, $orderByDirection] = $this->getOrderByMeta($request);
+        $searchValue = $request->query("searchValue") ?? "";
 
         $projects = $this->projectService->getWorkspaceProjectList(
             $workspace,
             $page,
             $limit,
             $orderBy,
-            $orderByDirection
+            $orderByDirection,
+            $searchValue
         );
 
         $projects = $projects->through(function (Project $project) use ($auth) {
@@ -607,5 +611,64 @@ class ProjectController extends Controller
         });
 
         return new ProjectCollection($projects);
+    }
+
+    /**
+     * Adds new project to a workspace.
+     */
+    public function addWorkspaceProject(
+        CreateProjectRequest $request,
+        string $workspaceID
+    ) {
+        $auth = User::user();
+        $workspace = Workspace::query()->where("id", $workspaceID)->first();
+
+        if (
+            !$workspace ||
+            !$auth->can(AbilityEnum::WORKSPACE_PROJECT_ADD->value, $workspace)
+        ) {
+            $this->failedAsNotFound("workspace");
+        }
+
+        $data = $request->validated();
+
+        try {
+            $createdProject = $this->projectService->createProject(
+                $auth,
+                $data
+            );
+        } catch (Throwable $e) {
+            $this->failed(
+                $this->parseExceptionError($e),
+                $this->parseExceptionCode($e)
+            );
+        }
+
+        $this->projectService->getUserCapabilitiesForProject(
+            $auth,
+            $createdProject
+        );
+
+        return new ProjectResource($createdProject);
+    }
+
+    public function deleteWorkspaceProject(
+        string $workspaceID,
+        string $projectID
+    ) {
+        $auth = User::user();
+        $workspace = Workspace::query()->where("id", $workspaceID)->first();
+
+        if (
+            !$workspace ||
+            !$auth->can(
+                AbilityEnum::WORKSPACE_PROJECT_REMOVE->value,
+                $workspace
+            )
+        ) {
+            $this->failedAsNotFound("workspace");
+        }
+
+        return $this->deleteProject($projectID);
     }
 }

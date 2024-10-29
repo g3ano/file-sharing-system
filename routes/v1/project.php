@@ -43,8 +43,13 @@ Route::prefix("projects")
             "getProjectMemberAbilities"
         );
 
-        Route::get("/{projectID}/files", [
-            FileController::class,
-            "getProjectFileList",
-        ]);
+        Route::controller(FileController::class)->group(function () {
+            Route::get("/{projectID}/files", "getProjectFileList");
+            Route::post("/{projectID}/files/add", "addProjectFile");
+            Route::post("/{projectID}/files/add", "addProjectFile");
+            Route::delete(
+                "/{projectID}/files/{fileID}/delete",
+                "deleteProjectFile"
+            );
+        });
     });

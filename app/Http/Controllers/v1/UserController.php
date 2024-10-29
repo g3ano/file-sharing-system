@@ -83,6 +83,23 @@ class UserController extends Controller
     }
 
     /**
+     * Get user by ID.
+     */
+    public function getDeletedUserByID(string $userID)
+    {
+        $user = User::onlyTrashed()->where("id", $userID)->first();
+        $auth = User::user();
+
+        if (!$user || !$auth->can(AbilityEnum::VIEW->value, $user)) {
+            $this->failedAsNotFound("user");
+        }
+
+        $this->userService->getUserCapabilitiesForUser($auth, $user);
+
+        return new UserResource($user);
+    }
+
+    /**
      * Get paginated list of users.
      */
     public function getUserList(Request $request)
@@ -520,10 +537,10 @@ class UserController extends Controller
     public function updateUserAbilitiesForUser(
         UpdateUserAbilitiesRequest $request,
         string $userID,
-        string $targetUserID
+        string $targetID
     ) {
         $user = User::query()->where("id", $userID)->first();
-        $targetUser = User::query()->where("id", $targetUserID)->first();
+        $targetUser = User::query()->where("id", $targetID)->first();
         $auth = User::user();
 
         if (
