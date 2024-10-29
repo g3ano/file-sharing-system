@@ -21,6 +21,8 @@ class UpdateWorkspaceMemberAbilitiesRequest extends BaseRequest
         AbilityEnum::USER_ABILITY_MANAGE->value,
         AbilityEnum::USER_ABILITY_SPECIAL_MANAGE->value,
 
+        AbilityEnum::STORAGE_VIEW->value,
+
         AbilityEnum::WORKSPACE_MEMBER_LIST->value,
         AbilityEnum::WORKSPACE_MEMBER_ADD->value,
         AbilityEnum::WORKSPACE_MEMBER_REMOVE->value,

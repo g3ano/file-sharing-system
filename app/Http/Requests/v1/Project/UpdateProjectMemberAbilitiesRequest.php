@@ -21,6 +21,8 @@ class UpdateProjectMemberAbilitiesRequest extends BaseRequest
         AbilityEnum::USER_ABILITY_MANAGE->value,
         AbilityEnum::USER_ABILITY_SPECIAL_MANAGE->value,
 
+        AbilityEnum::STORAGE_VIEW->value,
+
         AbilityEnum::PROJECT_MEMBER_LIST->value,
         AbilityEnum::PROJECT_MEMBER_ADD->value,
         AbilityEnum::PROJECT_MEMBER_REMOVE->value,

@@ -40,7 +40,7 @@ Route::prefix("projects")
         );
         Route::post(
             "/{projectID}/members/{userID}/abilities",
-            "getProjectMemberAbilities"
+            "updateProjectMemberAbilities"
         );
 
         Route::controller(FileController::class)->group(function () {
