@@ -33,9 +33,16 @@ class WorkspaceController extends Controller
     {
         $this->workspaceService = $workspaceService;
         $this->relationships = ["owner", "members"];
-        $this->orderable = ["id", "createdAt", "name", "description"];
+        $this->orderable = [
+            "id",
+            "createdAt",
+            "name",
+            "description",
+            "deletedAt",
+        ];
         $this->orderableMap = [
             "createdAt" => "created_at",
+            "deletedAt" => "deleted_at",
         ];
     }
 
@@ -409,13 +416,14 @@ class WorkspaceController extends Controller
         }
 
         [$page, $limit] = $this->getPaginatorMetadata($request);
+        [$orderByField, $orderByDirection] = $this->getOrderByMeta($request);
 
         /**
          * @var LengthAwarePaginator
          */
         $members = $workspace
             ->members()
-            ->orderByPivot("created_at")
+            ->orderByPivot($orderByField, $orderByDirection)
             ->paginate(perPage: $limit, page: $page);
 
         $members = $members->through(function ($member) use (

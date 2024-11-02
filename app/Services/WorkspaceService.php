@@ -46,8 +46,8 @@ class WorkspaceService extends BaseService
     public function createWorkspace(User $user, array $data): Workspace
     {
         return Workspace::query()->create([
-            "name" => $data["name"],
-            "description" => $data["description"],
+            "name" => ucfirst($data["name"]),
+            "description" => ucfirst($data["description"]),
             "user_id" => $user->id,
         ]);
     }
