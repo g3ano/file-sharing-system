@@ -33,8 +33,8 @@ class RegisteredUserController extends Controller
         $username = User::USERNAME_BASE . "_" . Str::random(8);
 
         $user = User::query()->create([
-            "first_name" => $data["first_name"],
-            "last_name" => $data["last_name"],
+            "first_name" => ucfirst($data["first_name"]),
+            "last_name" => ucfirst($data["last_name"]),
             "username" => $username,
             "email" => $data["email"],
             "password" => Hash::make($data["password"]),
