@@ -46,8 +46,8 @@ class ProjectService extends BaseService
     public function createProject(User $user, array $data): Project
     {
         return Project::query()->create([
-            "name" => $data["name"],
-            "description" => $data["description"],
+            "name" => ucfirst($data["name"]),
+            "description" => ucfirst($data["description"]),
             "workspace_id" => $data["workspace_id"],
             "user_id" => $user->id,
         ]);
