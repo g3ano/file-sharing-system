@@ -85,6 +85,28 @@ class FileService extends BaseService
     }
 
     /**
+     * Get project own trashed files.
+     */
+    public function getProjectTrashedFiles(
+        Project $project,
+        int $page = 1,
+        int $limit = 10,
+        string $orderByField = "created_at",
+        string $orderByDirection = "desc"
+    ) {
+        /**
+         * @var LengthAwarePaginator
+         */
+        $files = $project
+            ->files()
+            ->onlyTrashed()
+            ->orderBy($orderByField, $orderByDirection)
+            ->paginate(perPage: $limit, page: $page);
+
+        return $files;
+    }
+
+    /**
      * Get user capabilities for against file.
      */
     public function getUserCapabilitiesForFile(User $auth, File $file)
@@ -94,6 +116,10 @@ class FileService extends BaseService
         $capabilities = [
             AbilityEnum::VIEW->value => $auth->can(
                 AbilityEnum::VIEW->value,
+                $file
+            ),
+            AbilityEnum::UPDATE->value => $auth->can(
+                AbilityEnum::UPDATE->value,
                 $file
             ),
             AbilityEnum::DELETE->value => $auth->can(

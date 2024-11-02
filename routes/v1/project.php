@@ -44,7 +44,11 @@ Route::prefix("projects")
         );
 
         Route::controller(FileController::class)->group(function () {
-            Route::get("/{projectID}/files", "getProjectFileList");
+            Route::get("/{projectID}/files/listed", "getProjectFileList");
+            Route::get(
+                "/{projectID}/files/trashed",
+                "getProjectTrashedFileList"
+            );
             Route::post("/{projectID}/files/add", "addProjectFile");
             Route::post("/{projectID}/files/add", "addProjectFile");
             Route::delete(

@@ -164,9 +164,14 @@ class FileController extends Controller
             $this->failedAsNotFound("file");
         }
 
+        $searchValue = $request->query("searchValue") ?? "";
+
+        if (!$searchValue) {
+            return $this->succeedWithPagination();
+        }
+
         [$page, $limit] = $this->getPaginatorMetadata($request);
         [$orderByField, $orderByDirection] = $this->getOrderByMeta($request);
-        $searchValue = $request->query("searchValue") ?? "";
 
         $files = $this->fileService->searchFileList(
             $page,
@@ -246,9 +251,14 @@ class FileController extends Controller
             $this->failedAsNotFound("file");
         }
 
+        $searchValue = $request->query("searchValue") ?? "";
+
+        if (!$searchValue) {
+            return $this->succeedWithPagination();
+        }
+
         [$page, $limit] = $this->getPaginatorMetadata($request);
         [$orderByField, $orderByDirection] = $this->getOrderByMeta($request);
-        $searchValue = $request->query("searchValue") ?? "";
 
         $files = $this->fileService->searchDeletedFileList(
             $page,
@@ -285,6 +295,41 @@ class FileController extends Controller
         [$orderByField, $orderByDirection] = $this->getOrderByMeta($request);
 
         $files = $this->fileService->getProjectFiles(
+            $project,
+            $page,
+            $limit,
+            $orderByField,
+            $orderByDirection
+        );
+        $files = $files->through(function ($file) use ($auth) {
+            $this->fileService->getUserCapabilitiesForFile($auth, $file);
+            return $file;
+        });
+
+        return new FileCollection($files);
+    }
+
+    /**
+     * Get project trashed file list.
+     */
+    public function getProjectTrashedFileList(
+        Request $request,
+        string $projectID
+    ) {
+        $auth = User::user();
+        $project = Project::query()->where("id", $projectID)->first();
+
+        if (
+            !$project ||
+            !$auth->can(AbilityEnum::PROJECT_FILES_LIST->value, $project)
+        ) {
+            $this->failedAsNotFound("project");
+        }
+
+        [$page, $limit] = $this->getPaginatorMetadata($request);
+        [$orderByField, $orderByDirection] = $this->getOrderByMeta($request);
+
+        $files = $this->fileService->getProjectTrashedFiles(
             $project,
             $page,
             $limit,

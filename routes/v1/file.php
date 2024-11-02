@@ -10,8 +10,10 @@ Route::prefix("files")
         Route::post("/create", "createFile");
         Route::get("/list", "getFileList");
         Route::get("/list/count", "getFileListCount");
-        Route::get("/deleted", "getDeletedFileList");
-        Route::get("/deleted/count", "getDeletedFileListCount");
+        Route::get("/list/search", "searchFileList");
+        Route::get("/trashed", "getDeletedFileList");
+        Route::get("/trashed/count", "getDeletedFileListCount");
+        Route::get("/trashed/search", "searchDeleteFileList");
 
         Route::get("/{fileID}/download", "downloadFile");
         Route::post("/{fileID}/rename", "renameFile");
