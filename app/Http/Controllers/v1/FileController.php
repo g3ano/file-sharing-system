@@ -36,9 +36,11 @@ class FileController extends Controller
             "type",
             "extension",
             "size",
+            "deletedAt",
         ];
         $this->orderableMap = [
             "createdAt" => "created_at",
+            "deletedAt" => "deleted_at",
         ];
     }
 
