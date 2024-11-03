@@ -14,6 +14,7 @@ use Silber\Bouncer\Database\HasRolesAndAbilities;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[ObservedBy([UserObserver::class])]
 class User extends Authenticatable
@@ -76,5 +77,10 @@ class User extends Authenticatable
         return $this->belongsToMany(Project::class)
             ->using(ProjectUser::class)
             ->withTimestamps();
+    }
+
+    public function files(): HasMany
+    {
+        return $this->hasMany(File::class);
     }
 }

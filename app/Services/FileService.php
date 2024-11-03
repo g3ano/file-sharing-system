@@ -85,6 +85,27 @@ class FileService extends BaseService
     }
 
     /**
+     * Get user own files.
+     */
+    public function getUserFiles(
+        User $user,
+        int $page = 1,
+        int $limit = 10,
+        string $orderByField = "created_at",
+        string $orderByDirection = "desc"
+    ) {
+        /**
+         * @var LengthAwarePaginator
+         */
+        $files = $user
+            ->files()
+            ->orderBy($orderByField, $orderByDirection)
+            ->paginate(perPage: $limit, page: $page);
+
+        return $files;
+    }
+
+    /**
      * Get project own trashed files.
      */
     public function getProjectTrashedFiles(
@@ -98,6 +119,28 @@ class FileService extends BaseService
          * @var LengthAwarePaginator
          */
         $files = $project
+            ->files()
+            ->onlyTrashed()
+            ->orderBy($orderByField, $orderByDirection)
+            ->paginate(perPage: $limit, page: $page);
+
+        return $files;
+    }
+
+    /**
+     * Get project own trashed files.
+     */
+    public function getUserTrashedFiles(
+        User $user,
+        int $page = 1,
+        int $limit = 10,
+        string $orderByField = "created_at",
+        string $orderByDirection = "desc"
+    ) {
+        /**
+         * @var LengthAwarePaginator
+         */
+        $files = $user
             ->files()
             ->onlyTrashed()
             ->orderBy($orderByField, $orderByDirection)

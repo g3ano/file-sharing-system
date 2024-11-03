@@ -3,6 +3,7 @@
 use App\Http\Controllers\v1\UserController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\v1\Auth\RegisteredUserController;
+use App\Http\Controllers\v1\FileController;
 use App\Http\Controllers\v1\ProjectController;
 use App\Http\Controllers\v1\WorkspaceController;
 
@@ -57,6 +58,14 @@ Route::prefix("users")
             Route::get("/{userID}/projects", [
                 ProjectController::class,
                 "getUserProjectList",
+            ]);
+            Route::get("/{userID}/files/listed", [
+                FileController::class,
+                "getUserFileList",
+            ]);
+            Route::get("/{userID}/files/trashed", [
+                FileController::class,
+                "getUserTrashedFileList",
             ]);
         });
     });

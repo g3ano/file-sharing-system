@@ -22,6 +22,7 @@ class UpdateUserAbilitiesRequest extends BaseRequest
         AbilityEnum::USER_ABILITY_SPECIAL_MANAGE->value,
         AbilityEnum::USER_WORKSPACE_LIST->value,
         AbilityEnum::USER_PROJECT_LIST->value,
+        AbilityEnum::USER_FILE_LIST->value,
     ];
 
     /**

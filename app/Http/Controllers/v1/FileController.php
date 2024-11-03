@@ -312,6 +312,66 @@ class FileController extends Controller
     }
 
     /**
+     * Get user file list.
+     */
+    public function getUserFileList(Request $request, string $userID)
+    {
+        $auth = User::user();
+        $user = User::query()->where("id", $userID)->first();
+
+        if (!$user || !$auth->can(AbilityEnum::USER_FILE_LIST->value, $user)) {
+            $this->failedAsNotFound("user");
+        }
+
+        [$page, $limit] = $this->getPaginatorMetadata($request);
+        [$orderByField, $orderByDirection] = $this->getOrderByMeta($request);
+
+        $files = $this->fileService->getUserFiles(
+            $user,
+            $page,
+            $limit,
+            $orderByField,
+            $orderByDirection
+        );
+        $files = $files->through(function ($file) use ($auth) {
+            $this->fileService->getUserCapabilitiesForFile($auth, $file);
+            return $file;
+        });
+
+        return new FileCollection($files);
+    }
+
+    /**
+     * Get user trashed file list.
+     */
+    public function getUserTrashedFileList(Request $request, string $userID)
+    {
+        $auth = User::user();
+        $user = User::query()->where("id", $userID)->first();
+
+        if (!$user || !$auth->can(AbilityEnum::USER_FILE_LIST->value, $user)) {
+            $this->failedAsNotFound("user");
+        }
+
+        [$page, $limit] = $this->getPaginatorMetadata($request);
+        [$orderByField, $orderByDirection] = $this->getOrderByMeta($request);
+
+        $files = $this->fileService->getUserTrashedFiles(
+            $user,
+            $page,
+            $limit,
+            $orderByField,
+            $orderByDirection
+        );
+        $files = $files->through(function ($file) use ($auth) {
+            $this->fileService->getUserCapabilitiesForFile($auth, $file);
+            return $file;
+        });
+
+        return new FileCollection($files);
+    }
+
+    /**
      * Get project trashed file list.
      */
     public function getProjectTrashedFileList(

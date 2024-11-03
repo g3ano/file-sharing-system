@@ -19,6 +19,7 @@ enum AbilityEnum: string
 
     case USER_WORKSPACE_LIST = "user workspace list";
     case USER_PROJECT_LIST = "user project list";
+    case USER_FILE_LIST = "user file list";
 
     case STORAGE_VIEW = "storage view";
 

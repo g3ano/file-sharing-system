@@ -133,6 +133,7 @@ class UserService extends BaseService
 
                 AbilityEnum::USER_WORKSPACE_LIST->value,
                 AbilityEnum::USER_PROJECT_LIST->value,
+                AbilityEnum::USER_FILE_LIST->value,
                 ...$additional,
             ],
             $registeredUser
