@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\v1\FileController;
 use App\Http\Controllers\v1\ProjectController;
+use App\Http\Controllers\v1\StatController;
 use App\Http\Controllers\v1\StorageController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\v1\WorkspaceController;
@@ -11,13 +12,13 @@ Route::prefix("projects")
     ->middleware(["auth:sanctum"])
     ->group(function () {
         Route::post("/create", "createProject");
-        Route::get("/list", "getProjectList");
-        Route::get("/list/count", "getProjectListCount");
-        Route::get("/list/{projectID}/storage/used", [
+        Route::get("/listed", "getProjectList");
+        Route::get("/listed/count", "getProjectListCount");
+        Route::get("/listed/{projectID}/storage/used", [
             StorageController::class,
             "getProjectUsedSpace",
         ]);
-        Route::get("/list/{projectID}", "getProjectByID");
+        Route::get("/listed/{projectID}", "getProjectByID");
 
         Route::get("/deleted", "getDeletedProjectList");
         Route::get("/deleted/count", "getDeletedProjectListCount");
@@ -50,10 +51,13 @@ Route::prefix("projects")
                 "getProjectTrashedFileList"
             );
             Route::post("/{projectID}/files/add", "addProjectFile");
-            Route::post("/{projectID}/files/add", "addProjectFile");
             Route::delete(
                 "/{projectID}/files/{fileID}/delete",
                 "deleteProjectFile"
             );
+        });
+
+        Route::controller(StatController::class)->group(function () {
+            Route::get("/{projectID}/stats", "getProjectStats");
         });
     });
