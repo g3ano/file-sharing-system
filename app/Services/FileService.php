@@ -6,6 +6,7 @@ use App\Enums\AbilityEnum;
 use App\Models\File;
 use App\Models\Project;
 use App\Models\User;
+use App\Models\Workspace;
 use Illuminate\Http\Response;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -85,6 +86,27 @@ class FileService extends BaseService
     }
 
     /**
+     * Get workspace files.
+     */
+    public function getWorkspaceFiles(
+        Workspace $workspace,
+        int $page = 1,
+        int $limit = 10,
+        string $orderByField = "created_at",
+        string $orderByDirection = "desc"
+    ) {
+        /**
+         * @var LengthAwarePaginator
+         */
+        $files = $workspace
+            ->files()
+            ->orderBy($orderByField, $orderByDirection)
+            ->paginate(perPage: $limit, page: $page);
+
+        return $files;
+    }
+
+    /**
      * Get user own files.
      */
     public function getUserFiles(
@@ -119,6 +141,28 @@ class FileService extends BaseService
          * @var LengthAwarePaginator
          */
         $files = $project
+            ->files()
+            ->onlyTrashed()
+            ->orderBy($orderByField, $orderByDirection)
+            ->paginate(perPage: $limit, page: $page);
+
+        return $files;
+    }
+
+    /**
+     * Get workspace trashed files.
+     */
+    public function getWorkspaceTrashedFiles(
+        Workspace $workspace,
+        int $page = 1,
+        int $limit = 10,
+        string $orderByField = "created_at",
+        string $orderByDirection = "desc"
+    ) {
+        /**
+         * @var LengthAwarePaginator
+         */
+        $files = $workspace
             ->files()
             ->onlyTrashed()
             ->orderBy($orderByField, $orderByDirection)

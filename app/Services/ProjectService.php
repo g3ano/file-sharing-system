@@ -283,7 +283,7 @@ class ProjectService extends BaseService
     ) {
         $query = $workspace
             ->projects()
-            ->orderByPivot($orderByField, $orderByDirection);
+            ->orderBy($orderByField, $orderByDirection);
 
         if ($searchValue) {
             $searchValue = "%$searchValue%";

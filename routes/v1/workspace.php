@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\v1\FileController;
 use App\Http\Controllers\v1\ProjectController;
+use App\Http\Controllers\v1\StatController;
 use App\Http\Controllers\v1\StorageController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\v1\WorkspaceController;
@@ -12,9 +14,9 @@ Route::prefix("workspaces")
         Route::post("/create", "createWorkspace");
 
         Route::controller(StorageController::class)->group(function () {
-            Route::get("/list/storage/used", "getWorkspaceListUsedSpace");
+            Route::get("/listed/storage/used", "getWorkspaceListUsedSpace");
             Route::get(
-                "/list/{workspaceID}/storage/used",
+                "/listed/{workspaceID}/storage/used",
                 "getWorkspaceUsedSpace"
             );
 
@@ -28,9 +30,9 @@ Route::prefix("workspaces")
             );
         });
 
-        Route::get("/list", "getWorkspaceList");
-        Route::get("/list/count", "getWorkspaceListCount");
-        Route::get("/list/{workspaceID}", "getWorkspaceByID");
+        Route::get("/listed", "getWorkspaceList");
+        Route::get("/listed/count", "getWorkspaceListCount");
+        Route::get("/listed/{workspaceID}", "getWorkspaceByID");
 
         Route::get("/deleted", "getDeletedWorkspaceList");
         Route::get("/deleted/count", "getDeletedWorkspaceListCount");
@@ -56,11 +58,26 @@ Route::prefix("workspaces")
         );
 
         Route::controller(ProjectController::class)->group(function () {
-            Route::get("/{workspaceID}/projects", "getWorkspaceProjectList");
+            Route::get(
+                "/{workspaceID}/projects/listed",
+                "getWorkspaceProjectList"
+            );
             Route::post("/{workspaceID}/projects/add", "addWorkspaceProject");
             Route::delete(
                 "/{workspaceID}/projects/{projectID}/delete",
                 "deleteWorkspaceProject"
             );
+        });
+
+        Route::controller(FileController::class)->group(function () {
+            Route::get("/{workspaceID}/files/listed", "getWorkspaceFileList");
+            Route::get(
+                "/{workspaceID}/files/trashed",
+                "getWorkspaceTrashedFileList"
+            );
+        });
+
+        Route::controller(StatController::class)->group(function () {
+            Route::get("/{workspaceID}/stats", "getWorkspaceStats");
         });
     });

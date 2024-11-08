@@ -13,6 +13,7 @@ use App\Http\Resources\v1\FileResource;
 use App\Models\File;
 use App\Models\Project;
 use App\Models\User;
+use App\Models\Workspace;
 use App\Services\FileService;
 use App\Services\ProjectService;
 use Illuminate\Http\Request;
@@ -312,6 +313,36 @@ class FileController extends Controller
     }
 
     /**
+     * Get workspace file list (through its related projects).
+     */
+    public function getWorkspaceFileList(Request $request, string $workspaceID)
+    {
+        $auth = User::user();
+        $workspace = Workspace::query()->where("id", $workspaceID)->first();
+
+        if (!$workspace || !$auth->can(AbilityEnum::VIEW->value, $workspace)) {
+            $this->failedAsNotFound("workspace");
+        }
+
+        [$page, $limit] = $this->getPaginatorMetadata($request);
+        [$orderByField, $orderByDirection] = $this->getOrderByMeta($request);
+
+        $files = $this->fileService->getWorkspaceFiles(
+            $workspace,
+            $page,
+            $limit,
+            $orderByField,
+            $orderByDirection
+        );
+        $files = $files->through(function ($file) use ($auth) {
+            $this->fileService->getUserCapabilitiesForFile($auth, $file);
+            return $file;
+        });
+
+        return new FileCollection($files);
+    }
+
+    /**
      * Get user file list.
      */
     public function getUserFileList(Request $request, string $userID)
@@ -393,6 +424,38 @@ class FileController extends Controller
 
         $files = $this->fileService->getProjectTrashedFiles(
             $project,
+            $page,
+            $limit,
+            $orderByField,
+            $orderByDirection
+        );
+        $files = $files->through(function ($file) use ($auth) {
+            $this->fileService->getUserCapabilitiesForFile($auth, $file);
+            return $file;
+        });
+
+        return new FileCollection($files);
+    }
+
+    /**
+     * Get workspace trashed file list (through its related projects).
+     */
+    public function getWorkspaceTrashedFileList(
+        Request $request,
+        string $workspaceID
+    ) {
+        $auth = User::user();
+        $workspace = Workspace::query()->where("id", $workspaceID)->first();
+
+        if (!$workspace || !$auth->can(AbilityEnum::VIEW->value, $workspace)) {
+            $this->failedAsNotFound("workspace");
+        }
+
+        [$page, $limit] = $this->getPaginatorMetadata($request);
+        [$orderByField, $orderByDirection] = $this->getOrderByMeta($request);
+
+        $files = $this->fileService->getWorkspaceTrashedFiles(
+            $workspace,
             $page,
             $limit,
             $orderByField,

@@ -20,10 +20,10 @@ Route::prefix("users")
 
             Route::get("/me", "getAuthUser");
 
-            Route::get("/list", "getUserList");
-            Route::get("/list/count", "getUserListCount");
-            Route::get("/list/search", "searchUserList");
-            Route::get("/list/{userID}", "getUserByID");
+            Route::get("/listed", "getUserList");
+            Route::get("/listed/count", "getUserListCount");
+            Route::get("/listed/search", "searchUserList");
+            Route::get("/listed/{userID}", "getUserByID");
 
             Route::get("/deleted", "getDeletedUserList");
             Route::get("/deleted/count", "getDeletedUserListCount");
