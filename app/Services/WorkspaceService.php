@@ -42,14 +42,24 @@ class WorkspaceService extends BaseService
 
     /**
      * Creates workspace.
+     *
+     * @throws RuntimeException
      */
     public function createWorkspace(User $user, array $data): Workspace
     {
-        return Workspace::query()->create([
-            "name" => ucfirst($data["name"]),
-            "description" => ucfirst($data["description"]),
-            "user_id" => $user->id,
-        ]);
+        try {
+            $workspace = Workspace::query()->create([
+                "name" => ucfirst($data["name"]),
+                "description" => ucfirst($data["description"]),
+                "user_id" => $user->id,
+            ]);
+
+            $workspace->members()->attach([$user->id]);
+        } catch (Throwable $e) {
+            $this->failedAtRuntime($e->getMessage(), $e->getCode());
+        }
+
+        return $workspace;
     }
 
     /**

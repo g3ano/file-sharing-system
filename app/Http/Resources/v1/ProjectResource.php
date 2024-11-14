@@ -21,6 +21,7 @@ class ProjectResource extends BaseResource
             "attributes" => $this->getAttributes([
                 "name" => $this->name,
                 "description" => $this->description,
+                "workspaceID" => $this->workspace_id,
                 "createdAt" => $this->created_at,
             ]),
             "relationships" => $this->getRelationships([]),
@@ -44,6 +45,10 @@ class ProjectResource extends BaseResource
                 "deletedAt" => $this->deleted_at,
                 "deletedAtFormatted" => $this->deleted_at->format("F j, Y"),
             ];
+
+        if (!is_null($this->isMember)) {
+            $result["isMember"] = $this->isMember;
+        }
 
         return $result ?: new MissingValue();
     }

@@ -59,6 +59,7 @@ enum AbilityEnum: string
             // User abilities
             self::USER_WORKSPACE_LIST => "List User Workspaces",
             self::USER_PROJECT_LIST => "List User Projects",
+            self::USER_FILE_LIST => "List User Files",
             self::USER_ABILITY_MANAGE => "Manage User Abilities",
             self::USER_ABILITY_SPECIAL_MANAGE
                 => "Manage User special Abilities",

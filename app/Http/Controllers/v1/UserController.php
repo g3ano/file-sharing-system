@@ -68,9 +68,10 @@ class UserController extends Controller
     /**
      * Get user by ID.
      */
-    public function getUserByID(string $userID)
+    public function getUserByID(Request $request, string $userID)
     {
         $user = User::query()->where("id", $userID)->first();
+        $user->includeEmail = $request->boolean("includeEmail") ?? false;
         $auth = User::user();
 
         if (!$user || !$auth->can(AbilityEnum::VIEW->value, $user)) {
@@ -85,9 +86,10 @@ class UserController extends Controller
     /**
      * Get user by ID.
      */
-    public function getDeletedUserByID(string $userID)
+    public function getDeletedUserByID(Request $request, string $userID)
     {
         $user = User::onlyTrashed()->where("id", $userID)->first();
+        $user->includeEmail = $request->boolean("includeEmail") ?? false;
         $auth = User::user();
 
         if (!$user || !$auth->can(AbilityEnum::VIEW->value, $user)) {

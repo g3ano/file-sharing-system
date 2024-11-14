@@ -36,7 +36,6 @@ class UserSeeder extends Seeder
             "password" => Hash::make("manager@example.com"),
         ]);
 
-        BouncerFacade::allow($admin)->to(AbilityEnum::STORAGE_VIEW->value);
         BouncerFacade::allow($admin)->to(
             [
                 AbilityEnum::LIST->value,
@@ -122,7 +121,6 @@ class UserSeeder extends Seeder
             File::class
         );
 
-        BouncerFacade::allow($manager)->to(AbilityEnum::STORAGE_VIEW->value);
         BouncerFacade::allow($manager)->to(
             [
                 AbilityEnum::LIST->value,

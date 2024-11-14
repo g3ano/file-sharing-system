@@ -235,15 +235,20 @@ class ProjectController extends Controller
     public function getProjectByID(Request $request, string $projectID)
     {
         $auth = User::user();
-        $porject = Project::query()->where("id", $projectID)->first();
+        $project = Project::query()->where("id", $projectID)->first();
 
-        if (!$porject || !$auth->can(AbilityEnum::VIEW->value, $porject)) {
+        if (!$project || !$auth->can(AbilityEnum::VIEW->value, $project)) {
             $this->failedAsNotFound("project");
         }
 
-        $this->projectService->getUserCapabilitiesForProject($auth, $porject);
+        $this->projectService->getUserCapabilitiesForProject($auth, $project);
 
-        return new ProjectResource($porject);
+        $project->isMember = $this->projectService->isUserProjectMember(
+            $project,
+            $auth
+        );
+
+        return new ProjectResource($project);
     }
 
     /**
@@ -306,15 +311,20 @@ class ProjectController extends Controller
     public function getDeletedProjectByID(Request $request, string $projectID)
     {
         $auth = User::user();
-        $porject = Project::onlyTrashed()->where("id", $projectID)->first();
+        $project = Project::onlyTrashed()->where("id", $projectID)->first();
 
-        if (!$porject || !$auth->can(AbilityEnum::VIEW->value, $porject)) {
+        if (!$project || !$auth->can(AbilityEnum::VIEW->value, $project)) {
             $this->failedAsNotFound("project");
         }
 
-        $this->projectService->getUserCapabilitiesForProject($auth, $porject);
+        $this->projectService->getUserCapabilitiesForProject($auth, $project);
 
-        return new ProjectResource($porject);
+        $project->isMember = $this->projectService->isUserProjectMember(
+            $project,
+            $auth
+        );
+
+        return new ProjectResource($project);
     }
 
     /**
@@ -607,6 +617,11 @@ class ProjectController extends Controller
                 $auth,
                 $project
             );
+            $project->isMember = $this->projectService->isUserProjectMember(
+                $project,
+                $auth
+            );
+
             return $project;
         });
 

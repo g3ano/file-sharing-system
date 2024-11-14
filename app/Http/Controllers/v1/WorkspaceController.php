@@ -23,6 +23,7 @@ use App\Http\Requests\v1\Workspace\UpdateWorkspaceMemberAbilitiesRequest;
 use App\Http\Requests\v1\Workspace\UpdateWorkspaceRequest;
 use App\Http\Resources\v1\AbilityCollection;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 
 class WorkspaceController extends Controller
 {
@@ -61,7 +62,16 @@ class WorkspaceController extends Controller
         }
 
         $data = $request->validated();
-        $workspace = $this->workspaceService->createWorkspace($auth, $data);
+        try {
+            $workspace = $this->workspaceService->createWorkspace($auth, $data);
+        } catch (Throwable $e) {
+            $this->failed(
+                $this->parseExceptionError($e),
+                $this->parseExceptionCode($e)
+            );
+        }
+
+        event(new WorkspaceMembershipUpdated([$auth->id], $workspace->id));
 
         return $this->succeed(
             [
@@ -92,7 +102,7 @@ class WorkspaceController extends Controller
     }
 
     /**
-     * Get workspace data by ID.
+     * Get deleted workspace data by ID.
      */
     public function getDeletedWorkspaceByID(string $workspaceID)
     {
@@ -417,15 +427,30 @@ class WorkspaceController extends Controller
 
         [$page, $limit] = $this->getPaginatorMetadata($request);
         [$orderByField, $orderByDirection] = $this->getOrderByMeta($request);
+        $searchValue = $request->query("searchValue") ?? "";
 
         /**
          * @var LengthAwarePaginator
          */
         $members = $workspace
             ->members()
-            ->orderByPivot($orderByField, $orderByDirection)
-            ->paginate(perPage: $limit, page: $page);
+            ->orderByPivot($orderByField, $orderByDirection);
 
+        if ($searchValue) {
+            $members = $members->whereAny(
+                [
+                    "first_name",
+                    "last_name",
+                    "email",
+                    "username",
+                    DB::raw("CONCAT(first_name, ' ', last_name)"),
+                ],
+                "ILIKE",
+                "%{$searchValue}%"
+            );
+        }
+
+        $members = $members->paginate(perPage: $limit, page: $page);
         $members = $members->through(function ($member) use (
             $auth,
             $workspace

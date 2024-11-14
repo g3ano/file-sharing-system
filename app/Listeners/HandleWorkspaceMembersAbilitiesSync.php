@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Silber\Bouncer\BouncerFacade;
 use Silber\Bouncer\Database\Models;
 use App\Enums\WorkspaceMembershipUpdatedActionEnum;
+use Illuminate\Support\Facades\Log;
 
 class HandleWorkspaceMembersAbilitiesSync
 {
@@ -26,9 +27,13 @@ class HandleWorkspaceMembersAbilitiesSync
         $action = $event->action;
 
         if (empty($workspacesID) || empty($membersID)) {
-            $this->failedAtRuntime(__('workspace.abilities_sync.empty_data', [
-                'attribute' => empty($workspacesID) ? 'workspaces list' : 'members list',
-            ]));
+            $this->failedAtRuntime(
+                __("workspace.abilities_sync.empty_data", [
+                    "attribute" => empty($workspacesID)
+                        ? "workspaces list"
+                        : "members list",
+                ])
+            );
         }
 
         $this->BulkDeleteAbilities($membersID, $workspacesID);
@@ -38,18 +43,24 @@ class HandleWorkspaceMembersAbilitiesSync
         }
     }
 
-    protected function BulkInsertAbilities(array $membersID, array $workspacesID)
-    {
+    protected function BulkInsertAbilities(
+        array $membersID,
+        array $workspacesID
+    ) {
         $insertData = $this->getInsertData($membersID, $workspacesID);
 
         foreach ($insertData as $ability) {
-            BouncerFacade::allow($ability['user'])
-                ->to($ability['abilities'], $ability['resource']);
+            BouncerFacade::allow($ability["user"])->to(
+                $ability["abilities"],
+                $ability["resource"]
+            );
         }
     }
 
-    protected function BulkDeleteAbilities(array $membersID, array $workspacesID)
-    {
+    protected function BulkDeleteAbilities(
+        array $membersID,
+        array $workspacesID
+    ) {
         $abilityIDs = $this->getWorkspacesAbilityIDs($workspacesID);
         $effected = $this->removeMembersAbilities($membersID, $abilityIDs);
 
@@ -58,8 +69,8 @@ class HandleWorkspaceMembersAbilitiesSync
 
     protected function getInsertData(array $userIDs, array $workspaceIDs)
     {
-        $users = User::query()->whereIn('id', $userIDs)->get();
-        $workspaces = Workspace::query()->whereIn('id', $workspaceIDs)->get();
+        $users = User::query()->whereIn("id", $userIDs)->get();
+        $workspaces = Workspace::query()->whereIn("id", $workspaceIDs)->get();
 
         $defaultAbilities = [
             AbilityEnum::VIEW->value,
@@ -72,9 +83,9 @@ class HandleWorkspaceMembersAbilitiesSync
         foreach ($users as $user) {
             foreach ($workspaces as $workspace) {
                 $insertData[] = [
-                    'user' => $user,
-                    'abilities' => $defaultAbilities,
-                    'resource' => $workspace,
+                    "user" => $user,
+                    "abilities" => $defaultAbilities,
+                    "resource" => $workspace,
                 ];
             }
         }
@@ -90,11 +101,11 @@ class HandleWorkspaceMembersAbilitiesSync
         $count = 100;
         $abilityIDs = [];
 
-        DB::table(Models::table('abilities'))
-            ->select('id')
-            ->where('entity_type', Workspace::class)
-            ->whereIn('entity_id', $workspaceIDs)
-            ->orderBy('created_at')
+        DB::table(Models::table("abilities"))
+            ->select("id")
+            ->where("entity_type", Workspace::class)
+            ->whereIn("entity_id", $workspaceIDs)
+            ->orderBy("created_at")
             ->chunk($count, function ($abilities) use (&$abilityIDs) {
                 foreach ($abilities as $ability) {
                     $abilityIDs[] = $ability->id;
@@ -109,10 +120,10 @@ class HandleWorkspaceMembersAbilitiesSync
      */
     protected function removeMembersAbilities(array $userIDs, array $abilityIDs)
     {
-        return DB::table(Models::table('permissions'))
-            ->where('entity_type', User::class)
-            ->whereIn('entity_id', $userIDs)
-            ->whereIn('ability_id', $abilityIDs)
+        return DB::table(Models::table("permissions"))
+            ->where("entity_type", User::class)
+            ->whereIn("entity_id", $userIDs)
+            ->whereIn("ability_id", $abilityIDs)
             ->delete();
     }
 }
