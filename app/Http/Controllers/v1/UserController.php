@@ -54,11 +54,12 @@ class UserController extends Controller
     public function getAuthUser()
     {
         $auth = User::user();
-        $auth->includeEmail = true;
 
         if (!$auth) {
             $this->failedAsNotFound("user");
         }
+
+        $auth->includeEmail = true;
 
         $this->userService->getUserCapabilitiesForUser($auth, $auth, true);
 
@@ -71,13 +72,13 @@ class UserController extends Controller
     public function getUserByID(Request $request, string $userID)
     {
         $user = User::query()->where("id", $userID)->first();
-        $user->includeEmail = $request->boolean("includeEmail") ?? false;
         $auth = User::user();
 
         if (!$user || !$auth->can(AbilityEnum::VIEW->value, $user)) {
             $this->failedAsNotFound("user");
         }
 
+        $user->includeEmail = $request->boolean("includeEmail") ?? false;
         $this->userService->getUserCapabilitiesForUser($auth, $user);
 
         return new UserResource($user);
@@ -89,13 +90,13 @@ class UserController extends Controller
     public function getDeletedUserByID(Request $request, string $userID)
     {
         $user = User::onlyTrashed()->where("id", $userID)->first();
-        $user->includeEmail = $request->boolean("includeEmail") ?? false;
         $auth = User::user();
 
         if (!$user || !$auth->can(AbilityEnum::VIEW->value, $user)) {
             $this->failedAsNotFound("user");
         }
 
+        $user->includeEmail = $request->boolean("includeEmail") ?? false;
         $this->userService->getUserCapabilitiesForUser($auth, $user);
 
         return new UserResource($user);
