@@ -686,7 +686,11 @@ class WorkspaceController extends Controller
         $data = $request->validated();
 
         try {
-            $status = $workspace->update($data);
+            $status = $workspace->update([
+                ...$data,
+                "name" => ucfirst($data["name"]),
+                "description" => ucfirst($data["description"]),
+            ]);
         } catch (Throwable $e) {
             $this->failed(
                 $this->parseExceptionError($e),

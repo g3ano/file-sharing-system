@@ -401,7 +401,11 @@ class UserService extends BaseService
             $data["password"] = Hash::make($data["password"]);
         }
 
-        return $user->update($data);
+        return $user->update([
+            ...$data,
+            "first_name" => ucfirst($data["first_name"]),
+            "last_name" => ucfirst($data["last_name"]),
+        ]);
     }
 
     /**
