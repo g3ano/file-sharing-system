@@ -42,15 +42,25 @@ class ProjectService extends BaseService
 
     /**
      * Create new project.
+     *
+     * @throws RuntimeException
      */
     public function createProject(User $user, array $data): Project
     {
-        return Project::query()->create([
-            "name" => ucfirst($data["name"]),
-            "description" => ucfirst($data["description"]),
-            "workspace_id" => $data["workspace_id"],
-            "user_id" => $user->id,
-        ]);
+        try {
+            $project = Project::query()->create([
+                "name" => ucfirst($data["name"]),
+                "description" => ucfirst($data["description"]),
+                "workspace_id" => $data["workspace_id"],
+                "user_id" => $user->id,
+            ]);
+
+            $project->members()->attach([$user->id]);
+        } catch (Throwable $e) {
+            $this->failedAtRuntime($e->getMessage(), $e->getCode());
+        }
+
+        return $project;
     }
 
     /**
