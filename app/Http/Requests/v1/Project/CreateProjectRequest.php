@@ -42,4 +42,11 @@ class CreateProjectRequest extends BaseRequest
             "description" => ["bail", "required", "string", "max:1000"],
         ];
     }
+
+    public function attributes(): array
+    {
+        return [
+            "workspace_id" => "workspace",
+        ];
+    }
 }
