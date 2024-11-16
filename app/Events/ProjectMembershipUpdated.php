@@ -21,9 +21,9 @@ class ProjectMembershipUpdated
      * Create a new event instance.
      */
     public function __construct(
-        array $membersID = [],
+        array $membersID,
         int $projectID,
-        ?ProjectMembershipUpdatedActionEnum $action = null
+        ProjectMembershipUpdatedActionEnum $action = null
     ) {
         $this->projectID = $projectID;
         $this->membersID = (array) $membersID;
