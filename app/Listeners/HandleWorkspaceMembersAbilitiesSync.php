@@ -76,6 +76,7 @@ class HandleWorkspaceMembersAbilitiesSync
             AbilityEnum::VIEW->value,
             AbilityEnum::WORKSPACE_MEMBER_LIST->value,
             AbilityEnum::WORKSPACE_PROJECT_LIST->value,
+            AbilityEnum::STORAGE_VIEW->value,
         ];
 
         $insertData = [];
