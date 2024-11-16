@@ -131,15 +131,21 @@ class UserService extends BaseService
                 AbilityEnum::UPDATE->value,
                 AbilityEnum::DELETE->value,
 
-                AbilityEnum::USER_WORKSPACE_LIST->value,
                 AbilityEnum::USER_PROJECT_LIST->value,
+                AbilityEnum::USER_WORKSPACE_LIST->value,
                 AbilityEnum::USER_FILE_LIST->value,
                 ...$additional,
             ],
             $registeredUser
         );
         BouncerFacade::allow($registeredUser)->to(
-            [AbilityEnum::VIEW->value, ...$additional],
+            [
+                AbilityEnum::VIEW->value,
+                AbilityEnum::USER_PROJECT_LIST->value,
+                AbilityEnum::USER_WORKSPACE_LIST->value,
+                AbilityEnum::USER_FILE_LIST->value,
+                ...$additional,
+            ],
             User::class
         );
         BouncerFacade::allow($registeredUser)->to(
@@ -147,6 +153,7 @@ class UserService extends BaseService
                 AbilityEnum::VIEW->value,
                 AbilityEnum::UPDATE->value,
                 AbilityEnum::DELETE->value,
+                AbilityEnum::RESTORE->value,
 
                 AbilityEnum::FILE_DOWNLOAD->value,
                 ...$additional,
@@ -533,9 +540,7 @@ class UserService extends BaseService
                 array_unique(array_column($abilitiesByType, "name"))
             );
 
-            $formattedAbilities[
-                ResourceEnum::from($entityType)->class()
-            ] = $uniqueAbilitiesNamesByType;
+            $formattedAbilities[ResourceEnum::from($entityType)->class()] = $uniqueAbilitiesNamesByType;
         }
 
         return $formattedAbilities;

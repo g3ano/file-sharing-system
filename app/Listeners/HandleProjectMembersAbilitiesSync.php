@@ -74,6 +74,7 @@ class HandleProjectMembersAbilitiesSync
             AbilityEnum::PROJECT_FILES_LIST->value,
             AbilityEnum::PROJECT_FILES_ADD->value,
             AbilityEnum::PROJECT_FILES_REMOVE->value,
+            AbilityEnum::STORAGE_VIEW->value,
         ];
 
         $insertData = [];

@@ -11,7 +11,6 @@ use Illuminate\Support\Facades\DB;
 use Silber\Bouncer\BouncerFacade;
 use Silber\Bouncer\Database\Models;
 use App\Enums\WorkspaceMembershipUpdatedActionEnum;
-use Illuminate\Support\Facades\Log;
 
 class HandleWorkspaceMembersAbilitiesSync
 {
