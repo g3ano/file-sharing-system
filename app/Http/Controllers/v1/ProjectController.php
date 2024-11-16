@@ -50,10 +50,7 @@ class ProjectController extends Controller
         $data = $request->validated();
 
         try {
-            $createdProject = $this->projectService->createProject(
-                $auth,
-                $data
-            );
+            $project = $this->projectService->createProject($auth, $data);
         } catch (Throwable $e) {
             $this->failed(
                 $this->parseExceptionError($e),
@@ -61,12 +58,11 @@ class ProjectController extends Controller
             );
         }
 
-        $this->projectService->getUserCapabilitiesForProject(
-            $auth,
-            $createdProject
-        );
+        event(new ProjectMembershipUpdated([$auth->id], $project->id));
 
-        return new ProjectResource($createdProject);
+        $this->projectService->getUserCapabilitiesForProject($auth, $project);
+
+        return new ProjectResource($project);
     }
 
     /**

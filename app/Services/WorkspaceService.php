@@ -237,6 +237,10 @@ class WorkspaceService extends BaseService
                 AbilityEnum::FORCE_DELETE->value,
                 $workspace
             ),
+            AbilityEnum::STORAGE_VIEW->value => $auth->can(
+                AbilityEnum::STORAGE_VIEW->value,
+                $workspace
+            ),
             AbilityEnum::USER_ABILITY_MANAGE->value => $auth->can(
                 AbilityEnum::USER_ABILITY_MANAGE->value,
                 $workspace

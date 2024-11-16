@@ -498,6 +498,11 @@ class UserController extends Controller
         }
 
         $target = User::query()->where("id", $targetID)->first();
+
+        if (!$target) {
+            $this->failedAsNotFound("user");
+        }
+
         [$page, $limit] = $this->getPaginatorMetadata($request);
 
         $abilities = $this->userService->getUserAbilitiesForUser(

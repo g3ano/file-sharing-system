@@ -173,6 +173,10 @@ class ProjectService extends BaseService
                 AbilityEnum::FORCE_DELETE->value,
                 $project
             ),
+            AbilityEnum::STORAGE_VIEW->value => $auth->can(
+                AbilityEnum::STORAGE_VIEW->value,
+                $project
+            ),
             AbilityEnum::USER_ABILITY_MANAGE->value => $auth->can(
                 AbilityEnum::USER_ABILITY_MANAGE->value,
                 $project

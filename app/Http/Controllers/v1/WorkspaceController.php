@@ -73,12 +73,12 @@ class WorkspaceController extends Controller
 
         event(new WorkspaceMembershipUpdated([$auth->id], $workspace->id));
 
-        return $this->succeed(
-            [
-                "workspace" => $workspace,
-            ],
-            201
+        $this->workspaceService->getUserCapabilitiesForWorkspace(
+            $auth,
+            $workspace
         );
+
+        return new WorkspaceResource($workspace);
     }
 
     /**
