@@ -655,6 +655,8 @@ class ProjectController extends Controller
             );
         }
 
+        event(new ProjectMembershipUpdated([$auth->id], $createdProject->id));
+
         $this->projectService->getUserCapabilitiesForProject(
             $auth,
             $createdProject

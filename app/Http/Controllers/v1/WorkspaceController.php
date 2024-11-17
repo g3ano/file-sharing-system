@@ -84,7 +84,7 @@ class WorkspaceController extends Controller
     /**
      * Get workspace data by ID.
      */
-    public function getWorkspaceByID(Request $request, string $workspaceID)
+    public function getWorkspaceByID(string $workspaceID)
     {
         $auth = User::user();
         $workspace = Workspace::query()->where("id", $workspaceID)->first();
@@ -451,10 +451,7 @@ class WorkspaceController extends Controller
         }
 
         $members = $members->paginate(perPage: $limit, page: $page);
-        $members = $members->through(function ($member) use (
-            $auth,
-            $workspace
-        ) {
+        $members = $members->through(function ($member) use ($workspace) {
             $this->workspaceService->getWorkspaceMemberState(
                 $workspace,
                 $member
@@ -474,7 +471,6 @@ class WorkspaceController extends Controller
         string $workspaceID,
         string $userID
     ) {
-        $auth = User::user();
         $user = User::query()->where("id", $userID)->first();
 
         if (!$user) {

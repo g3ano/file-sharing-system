@@ -76,13 +76,23 @@ class HandleProjectMembersAbilitiesSync
             AbilityEnum::PROJECT_FILES_REMOVE->value,
             AbilityEnum::STORAGE_VIEW->value,
         ];
+        $ownerAbilities = [
+            AbilityEnum::DELETE->value,
+            AbilityEnum::UPDATE->value,
+            AbilityEnum::RESTORE->value,
+            AbilityEnum::PROJECT_FILES_ADD->value,
+            AbilityEnum::PROJECT_FILES_REMOVE->value,
+            AbilityEnum::PROJECT_MEMBER_ADD->value,
+            AbilityEnum::PROJECT_MEMBER_REMOVE->value,
+            AbilityEnum::USER_ABILITY_MANAGE->value,
+        ];
 
         $insertData = [];
 
         foreach ($users as $user) {
             $insertData[] = [
                 "user" => $user,
-                "abilities" => $defaultAbilities,
+                "abilities" => array_merge($defaultAbilities, $user->id === $project->user_id ? $ownerAbilities : []),
                 "resource" => $project,
             ];
         }

@@ -77,6 +77,16 @@ class HandleWorkspaceMembersAbilitiesSync
             AbilityEnum::WORKSPACE_PROJECT_LIST->value,
             AbilityEnum::STORAGE_VIEW->value,
         ];
+        $ownerAbilities = [
+            AbilityEnum::DELETE->value,
+            AbilityEnum::UPDATE->value,
+            AbilityEnum::RESTORE->value,
+            AbilityEnum::WORKSPACE_MEMBER_ADD->value,
+            AbilityEnum::WORKSPACE_MEMBER_REMOVE->value,
+            AbilityEnum::WORKSPACE_PROJECT_ADD->value,
+            AbilityEnum::WORKSPACE_PROJECT_REMOVE->value,
+            AbilityEnum::USER_ABILITY_MANAGE->value,
+        ];
 
         $insertData = [];
 
@@ -84,7 +94,7 @@ class HandleWorkspaceMembersAbilitiesSync
             foreach ($workspaces as $workspace) {
                 $insertData[] = [
                     "user" => $user,
-                    "abilities" => $defaultAbilities,
+                    "abilities" => array_merge($defaultAbilities, $user->id === $workspace->user_id ? $ownerAbilities : []),
                     "resource" => $workspace,
                 ];
             }
