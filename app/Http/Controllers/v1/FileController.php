@@ -356,6 +356,7 @@ class FileController extends Controller
 
         [$page, $limit] = $this->getPaginatorMetadata($request);
         [$orderByField, $orderByDirection] = $this->getOrderByMeta($request);
+        $searchValue = $request->query("searchValue") ?? "";
 
         $files = $this->fileService->getUserFiles(
             $user,

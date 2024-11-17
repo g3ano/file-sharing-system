@@ -116,7 +116,8 @@ class FileService extends BaseService
         int $page = 1,
         int $limit = 10,
         string $orderByField = "created_at",
-        string $orderByDirection = "desc"
+        string $orderByDirection = "desc",
+        string $searchValue = ""
     ) {
         /**
          * @var LengthAwarePaginator
@@ -124,8 +125,19 @@ class FileService extends BaseService
         $files = $user
             ->files()
             ->with(["user"])
-            ->orderBy($orderByField, $orderByDirection)
-            ->paginate(perPage: $limit, page: $page);
+            ->orderBy($orderByField, $orderByDirection);
+
+        if ($searchValue) {
+            $searchValue = "%{$searchValue}%";
+
+            $files = $files->whereAny(
+                ["name", "extension"],
+                "ILIKE",
+                $searchValue
+            );
+        }
+
+        $files = $files->paginate(perPage: $limit, page: $page);
 
         return $files;
     }
