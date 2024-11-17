@@ -28,9 +28,10 @@ Route::prefix("projects")
         ]);
         Route::get("/deleted/{projectID}", "getDeletedProjectByID");
 
-        Route::post("/{projectID}/restore", "restoreProject");
+        Route::put("/{projectID}/update", "updateProject");
         Route::delete("/{projectID}/delete", "deleteProject");
         Route::delete("/{projectID}/force-delete", "forceDeleteProject");
+        Route::post("/{projectID}/restore", "restoreProject");
 
         Route::get("/{projectID}/members", "getProjectMemberList");
         Route::post("/{projectID}/members/add", "addProjectMembers");

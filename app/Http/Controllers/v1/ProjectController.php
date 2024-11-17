@@ -10,6 +10,7 @@ use App\Http\Requests\v1\Project\AddProjectMemberRequest;
 use App\Http\Requests\v1\Project\CreateProjectRequest;
 use App\Http\Requests\v1\Project\RemoveProjectMembersRequest;
 use App\Http\Requests\v1\Project\UpdateProjectMemberAbilitiesRequest;
+use App\Http\Requests\v1\Project\UpdateProjectRequest;
 use App\Http\Resources\v1\AbilityCollection;
 use App\Http\Resources\v1\ProjectCollection;
 use App\Http\Resources\v1\ProjectResource;
@@ -683,5 +684,44 @@ class ProjectController extends Controller
         }
 
         return $this->deleteProject($projectID);
+    }
+
+    /**
+     * Update project.
+     */
+    public function updateProject(
+        UpdateProjectRequest $request,
+        string $projectID
+    ) {
+        $auth = User::user();
+        $project = Project::query()->where("id", $projectID)->first();
+
+        if (!$project || !$auth->can(AbilityEnum::UPDATE->value, $project)) {
+            $this->failedAsNotFound("project");
+        }
+
+        $data = $request->validated();
+
+        try {
+            $status = $project->update([
+                "name" => ucfirst($data["name"]),
+                "description" => ucfirst($data["description"]),
+            ]);
+        } catch (Throwable $e) {
+            $this->failed(
+                $this->parseExceptionError($e),
+                $this->parseExceptionCode($e)
+            );
+        }
+
+        if (!$status) {
+            $this->failedWithMessage(__("project.update"), 500);
+
+            Log::error(__("project.update"), [
+                "project" => $project,
+            ]);
+        }
+
+        return $this->succeedWithStatus();
     }
 }

@@ -13,4 +13,5 @@ return [
     "members" => [
         "not_found" => 'Project member isn\'t found',
     ],
+    "update" => "Failed to update workspace.",
 ];

@@ -683,7 +683,6 @@ class WorkspaceController extends Controller
 
         try {
             $status = $workspace->update([
-                ...$data,
                 "name" => ucfirst($data["name"]),
                 "description" => ucfirst($data["description"]),
             ]);
