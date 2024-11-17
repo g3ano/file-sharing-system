@@ -5,6 +5,7 @@ namespace App\Http\Resources\v1;
 use App\Http\Resources\BaseResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\MissingValue;
+use Illuminate\Support\Facades\Storage;
 
 class FileResource extends BaseResource
 {
@@ -23,9 +24,12 @@ class FileResource extends BaseResource
                 "extension" => $this->extension,
                 "type" => $this->type,
                 "size" => $this->size,
-                "path" => $this->path,
+                "path" => Storage::url($this->path),
                 "createdAt" => $this->created_at,
             ],
+            "relationships" => $this->getRelationships([
+                "owner" => new UserResource($this->whenLoaded("user")),
+            ]),
             "meta" => $this->getMeta(),
         ];
     }

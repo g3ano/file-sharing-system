@@ -79,6 +79,7 @@ class FileService extends BaseService
          */
         $files = $project
             ->files()
+            ->with(["user"])
             ->orderBy($orderByField, $orderByDirection)
             ->paginate(perPage: $limit, page: $page);
 
@@ -100,6 +101,7 @@ class FileService extends BaseService
          */
         $files = $workspace
             ->files()
+            ->with(["user"])
             ->orderBy($orderByField, $orderByDirection)
             ->paginate(perPage: $limit, page: $page);
 
@@ -121,6 +123,7 @@ class FileService extends BaseService
          */
         $files = $user
             ->files()
+            ->with(["user"])
             ->orderBy($orderByField, $orderByDirection)
             ->paginate(perPage: $limit, page: $page);
 
@@ -143,6 +146,7 @@ class FileService extends BaseService
         $files = $project
             ->files()
             ->onlyTrashed()
+            ->with(["user"])
             ->orderBy($orderByField, $orderByDirection)
             ->paginate(perPage: $limit, page: $page);
 
@@ -165,6 +169,7 @@ class FileService extends BaseService
         $files = $workspace
             ->files()
             ->onlyTrashed()
+            ->with(["user"])
             ->orderBy($orderByField, $orderByDirection)
             ->paginate(perPage: $limit, page: $page);
 
@@ -187,6 +192,7 @@ class FileService extends BaseService
         $files = $user
             ->files()
             ->onlyTrashed()
+            ->with(["user"])
             ->orderBy($orderByField, $orderByDirection)
             ->paginate(perPage: $limit, page: $page);
 
@@ -285,6 +291,7 @@ class FileService extends BaseService
          * @var LengthAwarePaginator
          */
         $files = File::query()
+            // ->with(["user"])
             ->orderBy($orderByField, $orderByDirection)
             ->paginate(perPage: $limit, page: $page);
 
