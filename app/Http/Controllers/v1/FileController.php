@@ -363,7 +363,8 @@ class FileController extends Controller
             $page,
             $limit,
             $orderByField,
-            $orderByDirection
+            $orderByDirection,
+            $searchValue
         );
         $files = $files->through(function ($file) use ($auth) {
             $this->fileService->getUserCapabilitiesForFile($auth, $file);
