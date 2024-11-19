@@ -19,6 +19,7 @@ use App\Models\Project;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\ProjectService;
+use App\Services\UserService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
@@ -382,6 +383,15 @@ class ProjectController extends Controller
             $orderByField,
             $orderByDirection
         );
+
+        $userService = new UserService();
+        $members = $members->through(function (User $user) use (
+            $auth,
+            $userService
+        ) {
+            $userService->getUserCapabilitiesForUser($auth, $user);
+            return $user;
+        });
 
         return new UserCollection($members);
     }

@@ -22,6 +22,7 @@ use App\Http\Requests\v1\Workspace\RemoveWorkspaceMembersRequest;
 use App\Http\Requests\v1\Workspace\UpdateWorkspaceMemberAbilitiesRequest;
 use App\Http\Requests\v1\Workspace\UpdateWorkspaceRequest;
 use App\Http\Resources\v1\AbilityCollection;
+use App\Services\UserService;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 
@@ -450,12 +451,18 @@ class WorkspaceController extends Controller
             );
         }
 
+        $userService = new UserService();
         $members = $members->paginate(perPage: $limit, page: $page);
-        $members = $members->through(function ($member) use ($workspace) {
+        $members = $members->through(function ($member) use (
+            $workspace,
+            $auth,
+            $userService
+        ) {
             $this->workspaceService->getWorkspaceMemberState(
                 $workspace,
                 $member
             );
+            $userService->getUserCapabilitiesForUser($auth, $member);
 
             return $member;
         });
