@@ -27,24 +27,6 @@ class UpdateUserRequest extends BaseRequest
         return [
             "first_name" => ["bail", "required", "string", "max:255"],
             "last_name" => ["bail", "required", "string", "max:255"],
-            "email" => [
-                "bail",
-                "required",
-                "string",
-                "lowercase",
-                "email:rfc",
-                "max:255",
-                Rule::unique(User::class, "email")->ignore($this->userID, "id"),
-            ],
-            // 'email' => [
-            //     'bail', 'required', 'string', 'lowercase', 'email:rfc,dns', 'max:255', Rule::unique(User::class, 'email'),
-            // ],
-            "password" => [
-                "bail",
-                "nullable",
-                "confirmed",
-                Password::defaults(),
-            ],
         ];
     }
 }

@@ -25,8 +25,8 @@ class UserSeeder extends Seeder
             "first_name" => "Admin",
             "last_name" => "Admin",
             "username" => "admin",
-            "email" => "admin@example.com",
-            "password" => Hash::make("admin@example.com"),
+            "email" => "ghanoasx@gmail.com",
+            "password" => Hash::make("ghanoasx@gmail.com"),
         ]);
         $manager = User::query()->create([
             "first_name" => "Manager",

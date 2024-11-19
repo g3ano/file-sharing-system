@@ -40,6 +40,7 @@ class RegisteredUserController extends Controller
             "password" => Hash::make($data["password"]),
         ]);
 
+        $username = User::USERNAME_BASE . "_" . Str::random(8);
         event(new Registered($user));
 
         $userService->getUserCapabilitiesForUser($auth, $user);

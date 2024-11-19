@@ -406,12 +406,7 @@ class UserService extends BaseService
      */
     public function updateUser(User $user, array $data)
     {
-        if (array_key_exists("password", $data)) {
-            $data["password"] = Hash::make($data["password"]);
-        }
-
         return $user->update([
-            ...$data,
             "first_name" => ucfirst($data["first_name"]),
             "last_name" => ucfirst($data["last_name"]),
         ]);

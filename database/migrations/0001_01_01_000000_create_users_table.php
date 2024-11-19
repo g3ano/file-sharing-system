@@ -17,7 +17,9 @@ return new class extends Migration {
             $table->string("username", 255);
             $table->string("email")->unique();
             $table->timestamp("email_verified_at")->nullable();
+            $table->string("google_id")->nullable();
             $table->string("password");
+            $table->string("avatar")->nullable();
             $table->rememberToken();
             $table->timestamps();
             $table->softDeletes();
