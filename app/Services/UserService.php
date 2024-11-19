@@ -104,12 +104,14 @@ class UserService extends BaseService
                     AbilityEnum::USER_WORKSPACE_LIST->value,
                     $target
                 ),
-                AbilityEnum::USER_PROJECT_LIST->value => $auth->is($target)
-                    ? true
-                    : $auth->can(
-                        AbilityEnum::USER_PROJECT_LIST->value,
-                        $target
-                    ),
+                AbilityEnum::USER_PROJECT_LIST->value => $auth->can(
+                    AbilityEnum::USER_PROJECT_LIST->value,
+                    $target
+                ),
+                AbilityEnum::USER_FILE_LIST->value => $auth->can(
+                    AbilityEnum::USER_FILE_LIST->value,
+                    $target
+                ),
             ];
         }
 
@@ -540,7 +542,9 @@ class UserService extends BaseService
                 array_unique(array_column($abilitiesByType, "name"))
             );
 
-            $formattedAbilities[ResourceEnum::from($entityType)->class()] = $uniqueAbilitiesNamesByType;
+            $formattedAbilities[
+                ResourceEnum::from($entityType)->class()
+            ] = $uniqueAbilitiesNamesByType;
         }
 
         return $formattedAbilities;
