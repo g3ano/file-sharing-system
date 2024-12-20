@@ -35,7 +35,12 @@ class UpdateWorkspaceRequest extends BaseRequest
                 ),
             ],
             "description" => ["bail", "required", "string", "max:1000"],
-            "size" => ["bail", "required", "integer"],
+            "size" => [
+                "bail",
+                "required",
+                "integer",
+                "max:" . Workspace::$MAX_SIZE,
+            ],
         ];
     }
 }
