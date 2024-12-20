@@ -29,6 +29,7 @@ class UpdateWorkspaceMemberAbilitiesRequest extends BaseRequest
         AbilityEnum::WORKSPACE_PROJECT_LIST->value,
         AbilityEnum::WORKSPACE_PROJECT_ADD->value,
         AbilityEnum::WORKSPACE_PROJECT_REMOVE->value,
+        AbilityEnum::WORKSPACE_SIZE_MANAGE->value,
     ];
 
     /**

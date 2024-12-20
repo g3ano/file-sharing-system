@@ -79,6 +79,10 @@ class WorkspaceService extends BaseService
             return [...$data, "size" => Workspace::$DEFAULT_SIZE];
         }
 
+        if ($data["size"] <= $workspace->size) {
+            return [...$data, "size" => $workspace->size];
+        }
+
         $isAuthorized = $user->can(
             AbilityEnum::WORKSPACE_SIZE_MANAGE->value,
             $workspace

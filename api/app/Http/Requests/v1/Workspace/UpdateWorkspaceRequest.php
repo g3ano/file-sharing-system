@@ -4,6 +4,7 @@ namespace App\Http\Requests\v1\Workspace;
 
 use App\Http\Requests\BaseRequest;
 use App\Models\Workspace;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
 class UpdateWorkspaceRequest extends BaseRequest
