@@ -1,0 +1,65 @@
+services:
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    networks:
+      - project-vault
+    ports:
+      - 9000:9000
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_CONNECTION: ${DB_CONNECTION}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_DATABASE: ${DB_DATABASE}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: project-vault-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./api:/var/www/html
+      - ./api/docker/caddy/Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+    networks:
+      - project-vault
+
+  db:
+    image: postgres:16.3
+    container_name: project-vault-postgres-db
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    networks:
+      - project-vault
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./api/docker/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  db-data:
+  caddy_data: # For Caddy SSL certificates
+  caddy_config: # For Caddy configuration
+
+networks:
+  project-vault:
