@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
 
         $workspaces = Workspace::factory()->count(10);
         $projects = Project::factory()->count(20)->create();
+
         User::factory()
             ->count(20)
             ->hasAttached($projects)

@@ -7,6 +7,7 @@ use App\Models\User;
 use RuntimeException;
 use App\Models\Workspace;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 use Silber\Bouncer\BouncerFacade;
 use Throwable;
 
@@ -48,18 +49,50 @@ class WorkspaceService extends BaseService
     public function createWorkspace(User $user, array $data): Workspace
     {
         try {
+            DB::beginTransaction();
+
             $workspace = Workspace::query()->create([
                 "name" => ucfirst($data["name"]),
                 "description" => ucfirst($data["description"]),
+                "size" => Workspace::$DEFAULT_SIZE,
                 "user_id" => $user->id,
             ]);
 
             $workspace->members()->attach([$user->id]);
+
+            DB::commit();
         } catch (Throwable $e) {
+            DB::rollBack();
+
             $this->failedAtRuntime($e->getMessage(), $e->getCode());
         }
 
         return $workspace;
+    }
+
+    public function ensureWorkspaceSize(
+        User $user,
+        Workspace $workspace,
+        array $data
+    ): array {
+        if (!$data["size"]) {
+            return [...$data, "size" => Workspace::$DEFAULT_SIZE];
+        }
+
+        $isAuthorized = $user->can(
+            AbilityEnum::WORKSPACE_SIZE_MANAGE->value,
+            $workspace
+        );
+
+        if (!$isAuthorized) {
+            return [...$data, "size" => Workspace::$DEFAULT_SIZE];
+        }
+
+        if ($data["size"] > Workspace::$MAX_SIZE) {
+            return [...$data, "size" => Workspace::$MAX_SIZE];
+        }
+
+        return $data;
     }
 
     /**
@@ -271,6 +304,10 @@ class WorkspaceService extends BaseService
             ),
             AbilityEnum::WORKSPACE_PROJECT_REMOVE->value => $auth->can(
                 AbilityEnum::WORKSPACE_PROJECT_REMOVE->value,
+                $workspace
+            ),
+            AbilityEnum::WORKSPACE_SIZE_MANAGE->value => $auth->can(
+                AbilityEnum::WORKSPACE_SIZE_MANAGE->value,
                 $workspace
             ),
             ...$additional,

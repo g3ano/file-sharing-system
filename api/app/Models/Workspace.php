@@ -16,7 +16,10 @@ class Workspace extends Model
     use HasFactory;
     use SoftDeletes;
 
-    protected $fillable = ["name", "description", "user_id"];
+    protected $fillable = ["name", "description", "user_id", "size"];
+
+    public static $DEFAULT_SIZE = 5_368_709_120; // 5GB
+    public static $MAX_SIZE = 16_105_899_520; // 15GB
 
     public function members(): BelongsToMany
     {

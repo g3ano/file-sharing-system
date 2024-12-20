@@ -24,12 +24,14 @@ class CreateWorkspaceRequest extends BaseRequest
     public function rules(): array
     {
         return [
-            'name' => [
-                'bail', 'required', 'string', 'max:255', Rule::unique(Workspace::class, 'name'),
+            "name" => [
+                "bail",
+                "required",
+                "string",
+                "max:255",
+                Rule::unique(Workspace::class, "name"),
             ],
-            'description' => [
-                'bail', 'required', 'string', 'max:1000',
-            ],
+            "description" => ["bail", "required", "string", "max:1000"],
         ];
     }
 }

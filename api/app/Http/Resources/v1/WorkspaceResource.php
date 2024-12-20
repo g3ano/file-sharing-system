@@ -21,6 +21,7 @@ class WorkspaceResource extends BaseResource
             "attributes" => $this->getAttributes([
                 "name" => $this->name,
                 "description" => $this->description,
+                "size" => $this->size,
                 "createdAt" => $this->created_at,
             ]),
             "relationships" => $this->getRelationships([

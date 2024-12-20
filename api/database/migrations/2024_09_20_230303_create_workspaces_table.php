@@ -19,6 +19,7 @@ return new class extends Migration {
                 ->onDelete("CASCADE");
             $table->string("name", 255);
             $table->string("description", 1000)->nullable();
+            $table->bigInteger("size", false, true);
             $table->timestamps();
 
             $table->softDeletes();

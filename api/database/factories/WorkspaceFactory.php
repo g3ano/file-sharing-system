@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Helpers\Slugable;
 use App\Models\User;
+use App\Models\Workspace;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -25,6 +26,7 @@ class WorkspaceFactory extends Factory
         return [
             "user_id" => User::factory()->create(),
             "name" => $name,
+            "size" => Workspace::$DEFAULT_SIZE,
             "description" => fake()->text(200),
         ];
     }

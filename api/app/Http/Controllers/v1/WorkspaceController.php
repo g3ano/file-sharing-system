@@ -63,6 +63,7 @@ class WorkspaceController extends Controller
         }
 
         $data = $request->validated();
+
         try {
             $workspace = $this->workspaceService->createWorkspace($auth, $data);
         } catch (Throwable $e) {
@@ -687,11 +688,17 @@ class WorkspaceController extends Controller
         }
 
         $data = $request->validated();
+        $data = $this->workspaceService->ensureWorkspaceSize(
+            $auth,
+            $workspace,
+            $data
+        );
 
         try {
             $status = $workspace->update([
                 "name" => ucfirst($data["name"]),
                 "description" => ucfirst($data["description"]),
+                "size" => $data["size"],
             ]);
         } catch (Throwable $e) {
             $this->failed(

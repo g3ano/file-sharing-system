@@ -16,25 +16,33 @@ class UserSeeder extends Seeder
 {
     use Slugable;
 
+    public array $admins = ["ghanoasx@gmail.com"];
+    public array $managers = ["manager@example.com"];
+
     /**
      * Run the database seeds.
      */
     public function run(): void
     {
-        $admin = User::query()->create([
-            "first_name" => "Admin",
-            "last_name" => "Admin",
-            "username" => "admin",
-            "email" => "ghanoasx@gmail.com",
-            "password" => Hash::make("ghanoasx@gmail.com"),
-        ]);
-        $manager = User::query()->create([
-            "first_name" => "Manager",
-            "last_name" => "Manager",
-            "username" => "manager",
-            "email" => "manager@example.com",
-            "password" => Hash::make("manager@example.com"),
-        ]);
+        foreach ($this->admins as $admin) {
+            $admin = User::query()->createOrFirst([
+                "first_name" => "Admin",
+                "last_name" => "Admin",
+                "username" => "admin",
+                "email" => $admin,
+                "password" => Hash::make($admin),
+            ]);
+        }
+
+        foreach ($this->managers as $manager) {
+            $manager = User::query()->createOrFirst([
+                "first_name" => "Manager",
+                "last_name" => "Manager",
+                "username" => "manager",
+                "email" => $manager,
+                "password" => Hash::make($manager),
+            ]);
+        }
 
         BouncerFacade::allow($admin)->to(
             [
@@ -76,6 +84,7 @@ class UserSeeder extends Seeder
                 AbilityEnum::WORKSPACE_PROJECT_LIST->value,
                 AbilityEnum::WORKSPACE_PROJECT_ADD->value,
                 AbilityEnum::WORKSPACE_PROJECT_REMOVE->value,
+                AbilityEnum::WORKSPACE_SIZE_MANAGE->value,
             ],
             Workspace::class
         );
@@ -161,6 +170,7 @@ class UserSeeder extends Seeder
                 AbilityEnum::WORKSPACE_PROJECT_LIST->value,
                 AbilityEnum::WORKSPACE_PROJECT_ADD->value,
                 AbilityEnum::WORKSPACE_PROJECT_REMOVE->value,
+                AbilityEnum::WORKSPACE_SIZE_MANAGE->value,
             ],
             Workspace::class
         );
